@@ -14,9 +14,11 @@ class Program
         var trainCommand = new Command("train", "Train a 1X2 prediction model from CSV match data");
         var trainInputOpt = new Option<string>("--input", "Path to training CSV file") { IsRequired = true };
         var trainOutputOpt = new Option<string>("--output", "Path to save trained model (.zip)") { IsRequired = true };
+        var trainerOpt = new Option<string>("--trainer", () => "sdca", "Trainer: sdca, lbfgs, lightgbm, or all");
         trainCommand.AddOption(trainInputOpt);
         trainCommand.AddOption(trainOutputOpt);
-        trainCommand.SetHandler(TrainAsync, trainInputOpt, trainOutputOpt);
+        trainCommand.AddOption(trainerOpt);
+        trainCommand.SetHandler(TrainAsync, trainInputOpt, trainOutputOpt, trainerOpt);
 
         var predictCommand = new Command("predict", "Predict match results from CSV input");
         var predictModelOpt = new Option<string>("--model", "Path to trained model (.zip)") { IsRequired = true };
@@ -27,14 +29,20 @@ class Program
         predictCommand.AddOption(predictOutputOpt);
         predictCommand.SetHandler(PredictAsync, predictModelOpt, predictInputOpt, predictOutputOpt);
 
+        var compareCommand = new Command("compare", "Train all models and compare performance");
+        var compareInputOpt = new Option<string>("--input", "Path to training CSV file") { IsRequired = true };
+        compareCommand.AddOption(compareInputOpt);
+        compareCommand.SetHandler(CompareAsync, compareInputOpt);
+
         var root = new RootCommand("FootballPrediction — 1X2 match prediction tool");
         root.AddCommand(trainCommand);
         root.AddCommand(predictCommand);
+        root.AddCommand(compareCommand);
 
         return await root.InvokeAsync(args);
     }
 
-    static async Task TrainAsync(string input, string output)
+    static async Task TrainAsync(string input, string output, string trainer)
     {
         Console.WriteLine($"Loading matches from: {input}");
 
@@ -58,24 +66,33 @@ class Program
         var features = FeatureEngineer.BuildFeatures(matches);
         Console.WriteLine($"Built features for {features.Count} matches.");
 
-        // Train model
-        var trainer = new ModelTrainer();
-        var (model, metrics) = trainer.TrainAndEvaluate(features, testFraction: 0.2f);
+        // Select trainer
+        var trainerKind = trainer.ToLowerInvariant() switch
+        {
+            "sdca" => ModelTrainer.TrainerKind.SdcaMaximumEntropy,
+            "lbfgs" => ModelTrainer.TrainerKind.LbfgsMaximumEntropy,
+            "lightgbm" => ModelTrainer.TrainerKind.LightGbm,
+            _ => ModelTrainer.TrainerKind.SdcaMaximumEntropy
+        };
+
+        // Train model with chronological split
+        var mlTrainer = new ModelTrainer();
+        var result = mlTrainer.TrainAndEvaluate(features, trainerKind, trainFraction: 0.8);
 
         // Print metrics
-        if (metrics != null)
+        if (result.Metrics != null)
         {
-            Console.WriteLine(ModelEvaluator.FormatMetrics(metrics));
-            Console.WriteLine(ModelEvaluator.FormatConfusionMatrix(metrics));
+            Console.WriteLine(ModelEvaluator.FormatMetrics(result.Metrics));
+            Console.WriteLine(ModelEvaluator.FormatConfusionMatrix(result.Metrics));
         }
         else
         {
-            Console.WriteLine("Not enough data for evaluation (< 10 matches). Model trained on all data.");
+            Console.WriteLine("Not enough data for evaluation (< 10 test matches). Model trained on all data.");
         }
 
         // Save model
-        var schema = trainer.GetDataView(features);
-        trainer.SaveModel(model, schema, output);
+        var schema = mlTrainer.GetDataView(features);
+        mlTrainer.SaveModel(result.Model, schema, output);
         Console.WriteLine($"Model saved to: {output}");
     }
 
@@ -138,6 +155,45 @@ class Program
         }
 
         Console.WriteLine($"Predictions saved to: {output}");
+    }
+
+    static async Task CompareAsync(string input)
+    {
+        Console.WriteLine($"Loading matches from: {input}");
+
+        if (!File.Exists(input))
+        {
+            Console.Error.WriteLine($"Error: File not found: {input}");
+            return;
+        }
+
+        var parser = new CsvParserService();
+        var matches = await parser.ParseMatchesAsync(input);
+        Console.WriteLine($"Parsed {matches.Count} matches.");
+
+        if (matches.Count < 20)
+        {
+            Console.Error.WriteLine("Error: Need at least 20 matches for comparison.");
+            return;
+        }
+
+        var features = FeatureEngineer.BuildFeatures(matches);
+        Console.WriteLine($"Built features for {features.Count} matches.");
+
+        var mlTrainer = new ModelTrainer();
+        var results = mlTrainer.TrainAllAndCompare(features, trainFraction: 0.8);
+
+        Console.WriteLine(ModelEvaluator.FormatComparison(results));
+
+        foreach (var r in results)
+        {
+            if (r.Metrics != null)
+            {
+                Console.WriteLine($"\n--- {r.Trainer} ---");
+                Console.WriteLine(ModelEvaluator.FormatMetrics(r.Metrics));
+                Console.WriteLine(ModelEvaluator.FormatConfusionMatrix(r.Metrics));
+            }
+        }
     }
 
     static string Escape(string value) => value.Contains(',') ? $"\"{value}\"" : value;

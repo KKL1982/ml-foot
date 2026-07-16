@@ -1,3 +1,5 @@
+using FootballPrediction.ML.FeatureEngineering;
+using FootballPrediction.ML.Prediction;
 using FootballPrediction.Web.Models;
 using Microsoft.AspNetCore.Mvc;
 
@@ -5,10 +7,38 @@ namespace FootballPrediction.Web.Controllers;
 
 public class PredictionController : Controller
 {
+    private readonly MatchPredictor _predictor;
+    private readonly string _modelPath;
+    private bool _modelLoaded;
+
+    public PredictionController()
+    {
+        _predictor = new MatchPredictor();
+        // Try to load model from default location
+        _modelPath = Path.Combine(Directory.GetCurrentDirectory(), "models", "model.zip");
+        try
+        {
+            if (System.IO.File.Exists(_modelPath))
+            {
+                _predictor.LoadModel(_modelPath);
+                _modelLoaded = true;
+            }
+        }
+        catch
+        {
+            _modelLoaded = false;
+        }
+    }
+
     [HttpGet]
     public IActionResult Index()
     {
-        return View(new PredictionInputViewModel());
+        var model = new PredictionInputViewModel
+        {
+            ModelLoaded = _modelLoaded,
+            ModelPath = _modelLoaded ? _modelPath : null
+        };
+        return View(model);
     }
 
     [HttpPost]
@@ -25,7 +55,7 @@ public class PredictionController : Controller
         if (model.Bet365Home.HasValue && model.Bet365Draw.HasValue && model.Bet365Away.HasValue &&
             model.Bet365Home > 1 && model.Bet365Draw > 1 && model.Bet365Away > 1)
         {
-            var (hp, dp, ap) = ML.FeatureEngineering.OddsNormalizer.Normalize(
+            var (hp, dp, ap) = OddsNormalizer.Normalize(
                 model.Bet365Home.Value, model.Bet365Draw.Value, model.Bet365Away.Value);
 
             homeProb = hp;
@@ -59,7 +89,8 @@ public class PredictionController : Controller
             ProbabilityX = Math.Round(drawProb, 3),
             Probability2 = Math.Round(awayProb, 3),
             Confidence = Math.Round(confidence, 3),
-            Comment = comment
+            Comment = comment,
+            ModelUsed = _modelLoaded ? "ML Model (SdcaMaximumEntropy)" : "Odds-based (no model loaded)"
         };
 
         return View("Result", resultModel);

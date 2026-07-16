@@ -4,28 +4,45 @@ namespace FootballPrediction.Web.Models;
 
 public class PredictionInputViewModel
 {
-    [Required(ErrorMessage = "Date is required.")]
-    [DataType(DataType.Date)]
-    public DateTime? Date { get; set; }
+    [Display(Name = "Date")]
+    public DateTime? Date { get; set; } = DateTime.Today;
 
-    [Required(ErrorMessage = "League is required.")]
+    [Required]
+    [Display(Name = "Championnat")]
     public string League { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "Home team is required.")]
+    [Required]
+    [Display(Name = "Équipe domicile")]
     public string HomeTeam { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "Away team is required.")]
+    [Required]
+    [Display(Name = "Équipe extérieure")]
     public string AwayTeam { get; set; } = string.Empty;
 
+    [Display(Name = "Coach domicile")]
     public string? HomeCoach { get; set; }
+
+    [Display(Name = "Coach extérieur")]
     public string? AwayCoach { get; set; }
 
-    [Range(1.01, 999, ErrorMessage = "Bet365 home odds must be > 1.00")]
+    [Display(Name = "Cote Bet365 — 1 (domicile)")]
     public double? Bet365Home { get; set; }
 
-    [Range(1.01, 999, ErrorMessage = "Bet365 draw odds must be > 1.00")]
+    [Display(Name = "Cote Bet365 — X (nul)")]
     public double? Bet365Draw { get; set; }
 
-    [Range(1.01, 999, ErrorMessage = "Bet365 away odds must be > 1.00")]
+    [Display(Name = "Cote Bet365 — 2 (extérieur)")]
     public double? Bet365Away { get; set; }
+
+    [Display(Name = "Cote Pinnacle — 1 (domicile)")]
+    public double? PinnacleHome { get; set; }
+
+    [Display(Name = "Cote Pinnacle — X (nul)")]
+    public double? PinnacleDraw { get; set; }
+
+    [Display(Name = "Cote Pinnacle — 2 (extérieur)")]
+    public double? PinnacleAway { get; set; }
+
+    public bool ModelLoaded { get; set; }
+    public string? ModelPath { get; set; }
 }

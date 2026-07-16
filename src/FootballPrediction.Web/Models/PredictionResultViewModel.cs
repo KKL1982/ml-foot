@@ -12,4 +12,5 @@ public class PredictionResultViewModel
     public double Probability2 { get; set; }
     public double Confidence { get; set; }
     public string Comment { get; set; } = string.Empty;
+    public string ModelUsed { get; set; } = "Odds-based";
 }
