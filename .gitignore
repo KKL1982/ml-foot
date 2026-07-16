@@ -1,0 +1,30 @@
+## Ignore build output
+bin/
+obj/
+
+## Ignore user-specific files
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+## Ignore VS Code
+.vscode/
+
+## Ignore JetBrains Rider
+.idea/
+
+## Ignore macOS
+.DS_Store
+
+## Ignore trained model files
+models/*.zip
+
+## Ignore data files
+data/
+*.csv
+!documentation/*.csv
+
+## Ignore NuGet packages
+packages/
+*.nupkg

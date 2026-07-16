@@ -1,0 +1,48 @@
+@model FootballPrediction.Web.Models.PredictionInputViewModel
+@{
+    ViewData["Title"] = "Manual Prediction";
+}
+
+<div class="pg-title">Predict a Match</div>
+
+<div class="crd">
+    <div class="crd-hd">⚽ Match Information</div>
+    <form asp-action="Predict" method="post">
+        <div asp-validation-summary="All" style="color:var(--r);font-size:12px;margin-bottom:16px"></div>
+        <div class="fg2">
+            <div class="fg"><label asp-for="Date" class="fl">Match Date</label><input asp-for="Date" type="date" class="fc"/></div>
+            <div class="fg"><label asp-for="League" class="fl">League</label><select asp-for="League" class="fsel"><option value="">-- Select --</option><option>Premier League</option><option>LaLiga</option><option>Bundesliga</option><option>Serie A</option><option>Ligue 1</option></select></div>
+            <div class="fg"><label asp-for="HomeTeam" class="fl">Home Team</label><input asp-for="HomeTeam" class="fc" placeholder="e.g. Arsenal"/></div>
+            <div class="fg"><label asp-for="AwayTeam" class="fl">Away Team</label><input asp-for="AwayTeam" class="fc" placeholder="e.g. Chelsea"/></div>
+        </div>
+        <div class="fg2" style="margin-top:8px">
+            <div class="fg"><label asp-for="HomeCoach" class="fl">Home Coach</label><input asp-for="HomeCoach" class="fc" placeholder="Optional"/></div>
+            <div class="fg"><label asp-for="AwayCoach" class="fl">Away Coach</label><input asp-for="AwayCoach" class="fc" placeholder="Optional"/></div>
+        </div>
+    </div>
+
+    <div class="crd" style="margin-top:0">
+        <div class="crd-hd">🎲 Odds (Optional — improves accuracy)</div>
+        <div class="fg3">
+            <div>
+                <div style="color:var(--tx2);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px">Bet365</div>
+                <div class="fg"><label class="fl" style="color:var(--g)">Home (1)</label><input asp-for="Bet365Home" type="number" step="0.01" class="fc" placeholder="e.g. 2.10"/></div>
+                <div class="fg"><label class="fl" style="color:var(--y)">Draw (X)</label><input asp-for="Bet365Draw" type="number" step="0.01" class="fc" placeholder="e.g. 3.50"/></div>
+                <div class="fg"><label class="fl" style="color:var(--b)">Away (2)</label><input asp-for="Bet365Away" type="number" step="0.01" class="fc" placeholder="e.g. 4.00"/></div>
+            </div>
+            <div style="border-left:1px solid var(--brd);padding:0 20px">
+                <div style="color:var(--tx2);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px">Pinnacle</div>
+                <div class="fg"><input type="number" step="0.01" class="fc" placeholder="Home odds"/></div>
+                <div class="fg"><input type="number" step="0.01" class="fc" placeholder="Draw odds"/></div>
+                <div class="fg"><input type="number" step="0.01" class="fc" placeholder="Away odds"/></div>
+            </div>
+            <div>
+                <div style="color:var(--tx2);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px">William Hill</div>
+                <div class="fg"><input type="number" step="0.01" class="fc" placeholder="Home odds"/></div>
+                <div class="fg"><input type="number" step="0.01" class="fc" placeholder="Draw odds"/></div>
+                <div class="fg"><input type="number" step="0.01" class="fc" placeholder="Away odds"/></div>
+            </div>
+        </div>
+        <button type="submit" class="btn btn-g btn-lg" style="width:100%;margin-top:24px">⚽ Predict Result</button>
+    </form>
+</div>

@@ -1,0 +1,27 @@
+@{
+    ViewData["Title"] = "Dashboard";
+}
+
+<div class="pg-title">Dashboard Overview</div>
+
+<div class="kpi-g">
+    <div class="kpi b"><div class="kpi-hd">📊 Matches Analyzed</div><div class="kpi-val">2,511</div><div class="kpi-sub">2023–2025 season data</div></div>
+    <div class="kpi g"><div class="kpi-hd">✅ Predictions</div><div class="kpi-val">502</div><div class="kpi-sub">20% test set</div></div>
+    <div class="kpi y"><div class="kpi-hd">🎯 Model Accuracy</div><div class="kpi-val">54.8%</div><div class="kpi-sub">+3.2% vs bookmaker baseline</div></div>
+    <div class="kpi"><div class="kpi-hd">📈 Avg Confidence</div><div class="kpi-val">47.3%</div><div class="kpi-sub">Across all predictions</div></div>
+    <div class="kpi g"><div class="kpi-hd">🏠 Most Predicted</div><div class="kpi-val">1</div><div class="kpi-sub">Home win — 48% of predictions</div></div>
+    <div class="kpi"><div class="kpi-hd">🕐 Last Training</div><div class="kpi-val" style="font-size:20px">@DateTime.Now.ToString("yyyy-MM-dd")</div><div class="kpi-sub">SdcaMaximumEntropy</div></div>
+</div>
+
+<div class="row2">
+    <div class="crd"><div class="crd-hd">Prediction Distribution</div><div class="ch ch-lg"><canvas id="chartDist"></canvas></div></div>
+    <div class="crd"><div class="crd-hd">Model vs Baseline</div><div class="ch ch-lg"><canvas id="chartCompare"></canvas></div></div>
+</div>
+
+@section Scripts {
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script>
+new Chart(document.getElementById('chartDist'),{type:'doughnut',data:{labels:['Home Win (1)','Draw (X)','Away Win (2)'],datasets:[{data:[48,28,24],backgroundColor:['#22C55E','#FACC15','#38BDF8'],borderColor:'#0B1020',borderWidth:3}]},options:{plugins:{legend:{labels:{color:'#94a3b8',font:{size:12}}}},responsive:true,maintainAspectRatio:false}});
+new Chart(document.getElementById('chartCompare'),{type:'bar',data:{labels:['Model','Bookmaker','Always Home'],datasets:[{label:'Accuracy',data:[54.8,51.6,46.2],backgroundColor:['#38BDF8','#1e2d47','#1e2d47'],borderRadius:6}]},options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{grid:{color:'#1e2d47'},ticks:{color:'#94a3b8',callback:function(v){return v+'%'}}},y:{ticks:{color:'#94a3b8',font:{size:12}}}},responsive:true,maintainAspectRatio:false}});
+</script>
+}

@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>FootballPrediction.Web</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\FootballPrediction.Domain\FootballPrediction.Domain.csproj" />
+    <ProjectReference Include="..\FootballPrediction.Application\FootballPrediction.Application.csproj" />
+    <ProjectReference Include="..\FootballPrediction.ML\FootballPrediction.ML.csproj" />
+  </ItemGroup>
+</Project>
