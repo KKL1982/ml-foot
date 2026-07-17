@@ -27,7 +27,7 @@ public class MatchPredictor
         var predictions = _model.Transform(dataView);
 
         return _mlContext.Data
-            .CreateEnumerable<MatchPrediction>(predictions, reuseRowObject: false)
+            .CreateEnumerable<MatchPrediction>(predictions, reuseRowObject: false, ignoreMissingColumns: true)
             .ToList();
     }
 }

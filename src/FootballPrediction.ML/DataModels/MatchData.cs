@@ -35,6 +35,8 @@ public class MatchData
     public float HomeCoachTenure { get; set; }
     public float AwayCoachTenure { get; set; }
 
-    // Label
+    // Label (multiclass: "1", "X", "2")
     public string Label { get; set; } = string.Empty;
+    /// <summary>Binary label: true=HomeWin, false=AwayWin.</summary>
+    public bool HomeWin { get; set; }
 }
