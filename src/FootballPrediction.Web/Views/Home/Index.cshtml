@@ -2,92 +2,143 @@
     ViewData["Title"] = "Dashboard";
 }
 
-<div class="page-title">Dashboard Overview</div>
+<div class="page-title">Dashboard</div>
+<div class="page-subtitle">Football prediction system — 14 211 matches, 4 leagues, 2015–2025</div>
 
 <div class="kpi-grid">
     <div class="kpi-card kpi-blue">
-        <div class="kpi-header">&#128202; Matches Analyzed</div>
-        <div class="kpi-value">2,511</div>
-        <div class="kpi-sub">2023–2025 season data</div>
+        <div class="kpi-header">📊 Dataset</div>
+        <div class="kpi-value">14 211</div>
+        <div class="kpi-sub">Matches — Premier League, LaLiga, Bundesliga, Ligue 1</div>
+    </div>
+    <div class="kpi-card kpi-purple">
+        <div class="kpi-header">🧠 Models</div>
+        <div class="kpi-value">8</div>
+        <div class="kpi-sub">4 multiclass + 4 binary classifiers</div>
     </div>
     <div class="kpi-card kpi-green">
-        <div class="kpi-header">&#9989; Predictions</div>
-        <div class="kpi-value">502</div>
-        <div class="kpi-sub">20% test set</div>
+        <div class="kpi-header">🎯 Binary Accuracy</div>
+        <div class="kpi-value">71.4%</div>
+        <div class="kpi-sub">LbfgsLogisticRegression · F1 0.78 · AUC 0.78</div>
+        <div class="kpi-delta" style="color:var(--green)">↑ +18 pts vs multiclass (53%)</div>
     </div>
     <div class="kpi-card kpi-yellow">
-        <div class="kpi-header">&#127919; Model Accuracy</div>
-        <div class="kpi-value">54.8%</div>
-        <div class="kpi-sub">+3.2% vs bookmaker baseline</div>
+        <div class="kpi-header">⚽ Leagues</div>
+        <div class="kpi-value">4</div>
+        <div class="kpi-sub">Premier League · LaLiga · Bundesliga · Ligue 1</div>
+    </div>
+    <div class="kpi-card kpi-blue">
+        <div class="kpi-header">👥 Coach Coverage</div>
+        <div class="kpi-value">100%</div>
+        <div class="kpi-sub">300+ coach intervals mapped · 132 teams</div>
     </div>
     <div class="kpi-card">
-        <div class="kpi-header">&#128200; Avg Confidence</div>
-        <div class="kpi-value">47.3%</div>
-        <div class="kpi-sub">Across all predictions</div>
+        <div class="kpi-header">⏱️ Training Period</div>
+        <div class="kpi-value" style="font-size:22px">10 seasons</div>
+        <div class="kpi-sub">2015–2016 → 2024–2025</div>
     </div>
-    <div class="kpi-card kpi-green">
-        <div class="kpi-header">&#127968; Most Predicted</div>
-        <div class="kpi-value">1</div>
-        <div class="kpi-sub">Home win — 48% of predictions</div>
-    </div>
-    <div class="kpi-card">
-        <div class="kpi-header">&#128340; Last Training</div>
-        <div class="kpi-value" style="font-size:20px">@DateTime.Now.ToString("yyyy-MM-dd")</div>
-        <div class="kpi-sub">SdcaMaximumEntropy</div>
-    </div>
+</div>
+
+<div class="alert alert-warning">
+    ⚠️ This tool is experimental. Predictions do not constitute financial advice.
 </div>
 
 <div class="row-2">
     <div class="card">
-        <div class="card-header">Prediction Distribution</div>
-        <div class="chart-wrap chart-wrap-lg"><canvas id="chartDist"></canvas></div>
+        <div class="card-header">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
+            Model Comparison (Multiclass)
+        </div>
+        <div class="chart-wrap chart-wrap-md">
+            <canvas id="chartMulticlass"></canvas>
+        </div>
+        <div style="margin-top:16px;font-size:12px;color:var(--tx3)">
+            All models struggle with draws (>95% misclassified). Best: Lbfgs 52.97%.
+        </div>
     </div>
     <div class="card">
-        <div class="card-header">Model vs Baseline</div>
-        <div class="chart-wrap chart-wrap-lg"><canvas id="chartCompare"></canvas></div>
+        <div class="card-header">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
+            Model Comparison (Binary — no draws)
+        </div>
+        <div class="chart-wrap chart-wrap-md">
+            <canvas id="chartBinary"></canvas>
+        </div>
+        <div style="margin-top:16px;font-size:12px;color:var(--tx3)">
+            Removing draws boosts accuracy from 53% to 71%. Best: LbfgsLogisticRegression.
+        </div>
+    </div>
+</div>
+
+<div class="feature-grid">
+    <div class="feature-card">
+        <div class="feature-icon" style="background:rgba(56,189,248,.15)">🔮</div>
+        <h4>Single Match Prediction</h4>
+        <p>Enter teams, league, and odds to get an instant 1X2 prediction with confidence score.</p>
+        <a href="/prediction" class="btn btn-blue btn-sm" style="margin-top:12px">New Prediction →</a>
+    </div>
+    <div class="feature-card">
+        <div class="feature-icon" style="background:rgba(34,197,94,.15)">📁</div>
+        <h4>Batch CSV Processing</h4>
+        <p>Upload a CSV file with multiple matches and get predictions for all of them at once.</p>
+        <a href="/batch" class="btn btn-green btn-sm" style="margin-top:12px">Upload CSV →</a>
+    </div>
+    <div class="feature-card">
+        <div class="feature-icon" style="background:rgba(167,139,250,.15)">🧠</div>
+        <h4>Neural Network</h4>
+        <p>Custom MLP with embeddings (21K params). Adam optimizer, He initialization, from-scratch C#.</p>
+    </div>
+    <div class="feature-card">
+        <div class="feature-icon" style="background:rgba(250,204,21,.15)">📈</div>
+        <h4>Binary Betting Mode</h4>
+        <p>Home/Away only with confidence threshold. Skip uncertain matches. F1 0.78, AUC 0.78.</p>
     </div>
 </div>
 
 @section Scripts {
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <script>
-new Chart(document.getElementById('chartDist'), {
-    type: 'doughnut',
-    data: {
-        labels: ['Home Win (1)', 'Draw (X)', 'Away Win (2)'],
-        datasets: [{
-            data: [48, 28, 24],
-            backgroundColor: ['#22C55E', '#FACC15', '#38BDF8'],
-            borderColor: '#0B1020',
-            borderWidth: 3
-        }]
-    },
-    options: {
-        plugins: { legend: { labels: { color: '#94a3b8', font: { size: 12 } } } },
-        responsive: true,
-        maintainAspectRatio: false
-    }
-});
-new Chart(document.getElementById('chartCompare'), {
+// Multiclass chart
+new Chart(document.getElementById('chartMulticlass'), {
     type: 'bar',
     data: {
-        labels: ['Model', 'Bookmaker', 'Always Home'],
+        labels: ['Sdca', 'Lbfgs', 'LightGbm', 'NeuralNet'],
         datasets: [{
-            label: 'Accuracy',
-            data: [54.8, 51.6, 46.2],
-            backgroundColor: ['#38BDF8', '#1e2d47', '#1e2d47'],
-            borderRadius: 6
+            label: 'Accuracy %',
+            data: [49.7, 52.97, 51.78, 49.38],
+            backgroundColor: ['#64748b', '#38bdf8', '#22c55e', '#a78bfa'],
+            borderRadius: 8
         }]
     },
     options: {
-        indexAxis: 'y',
+        responsive: true, maintainAspectRatio: false,
         plugins: { legend: { display: false } },
         scales: {
-            x: { grid: { color: '#1e2d47' }, ticks: { color: '#94a3b8', callback: function(v) { return v + '%'; } } },
-            y: { ticks: { color: '#94a3b8', font: { size: 12 } } }
-        },
-        responsive: true,
-        maintainAspectRatio: false
+            y: { min: 45, max: 55, grid: { color: '#1e2d47' }, ticks: { color: '#94a3b8', callback: v => v + '%' } },
+            x: { ticks: { color: '#94a3b8' } }
+        }
+    }
+});
+
+// Binary chart
+new Chart(document.getElementById('chartBinary'), {
+    type: 'bar',
+    data: {
+        labels: ['SdcaBin', 'LbfgsBin', 'LightGbmBin', 'NeuralNetBin'],
+        datasets: [{
+            label: 'Accuracy %',
+            data: [71.12, 71.40, 69.95, 69.43],
+            backgroundColor: ['#64748b', '#38bdf8', '#22c55e', '#a78bfa'],
+            borderRadius: 8
+        }]
+    },
+    options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+            y: { min: 65, max: 75, grid: { color: '#1e2d47' }, ticks: { color: '#94a3b8', callback: v => v + '%' } },
+            x: { ticks: { color: '#94a3b8' } }
+        }
     }
 });
 </script>

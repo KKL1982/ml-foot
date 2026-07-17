@@ -4,6 +4,7 @@
     string badgeClass = Model.PredictedResult switch { "1" => "badge-1", "X" => "badge-X", "2" => "badge-2", _ => "" };
     string verdict    = Model.PredictedResult switch { "1" => "Home Win", "X" => "Draw", "2" => "Away Win", _ => "" };
     string confClass  = Model.Confidence >= 0.6 ? "conf-high" : Model.Confidence >= 0.45 ? "conf-med" : "conf-low";
+    int confPct = (int)(Model.Confidence * 100);
 }
 
 <div class="page-title">Prediction Result</div>
@@ -17,29 +18,42 @@
         </div>
         <div class="result-verdict">@verdict</div>
         <div class="result-comment">@Model.Comment</div>
-        <span class="badge badge-lg @confClass">Confidence: @Model.Confidence.ToString("P0")</span>
-        <div style="margin-top:14px;font-size:11px;color:var(--tx2)">@Model.ModelUsed</div>
+
+        <div class="conf-gauge" style="justify-content:center;margin:0 auto;width:fit-content">
+            <div class="conf-gauge-ring" style="--pct:@(confPct)%">
+                <span>@confPct%</span>
+            </div>
+            <div class="conf-gauge-text">
+                Confidence<br>
+                <span style="font-size:11px;color:var(--tx3)">@(confPct >= 60 ? "High" : confPct >= 45 ? "Medium" : "Low")</span>
+            </div>
+        </div>
+
+        <div style="margin-top:18px;font-size:11px;color:var(--tx3)">@Model.ModelUsed</div>
     </div>
 
     <div class="card">
-        <div class="card-header">&#128202; Probabilities</div>
+        <div class="card-header">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
+            Probability Breakdown
+        </div>
         <div class="prob-group">
             <div class="prob-label">
-                <span>&#127968; Home Win (1)</span>
+                <span>🏠 Home Win</span>
                 <strong style="color:var(--green)">@Model.Probability1.ToString("P1")</strong>
             </div>
             <div class="prob-bar"><div class="prob-fill prob-green" style="width:@(Model.Probability1*100)%"></div></div>
         </div>
         <div class="prob-group">
             <div class="prob-label">
-                <span>&#129309; Draw (X)</span>
+                <span>🤝 Draw</span>
                 <strong style="color:var(--yellow)">@Model.ProbabilityX.ToString("P1")</strong>
             </div>
             <div class="prob-bar"><div class="prob-fill prob-yellow" style="width:@(Model.ProbabilityX*100)%"></div></div>
         </div>
         <div class="prob-group" style="margin-bottom:0">
             <div class="prob-label">
-                <span>&#9992; Away Win (2)</span>
+                <span>✈️ Away Win</span>
                 <strong style="color:var(--blue)">@Model.Probability2.ToString("P1")</strong>
             </div>
             <div class="prob-bar"><div class="prob-fill prob-blue" style="width:@(Model.Probability2*100)%"></div></div>
@@ -47,7 +61,7 @@
     </div>
 </div>
 
-<div style="margin-top:24px">
-    <a href="/prediction" class="btn btn-outline">&larr; New Prediction</a>
-    <a href="/" class="btn btn-outline" style="margin-left:8px">&#127968; Dashboard</a>
+<div style="margin-top:28px;display:flex;gap:12px">
+    <a href="/prediction" class="btn btn-outline">← New Prediction</a>
+    <a href="/" class="btn btn-outline">🏠 Dashboard</a>
 </div>
