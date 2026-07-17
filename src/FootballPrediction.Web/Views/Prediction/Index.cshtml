@@ -3,46 +3,101 @@
     ViewData["Title"] = "Manual Prediction";
 }
 
-<div class="pg-title">Predict a Match</div>
+<div class="page-title">Predict a Match</div>
 
-<div class="crd">
-    <div class="crd-hd">⚽ Match Information</div>
-    <form asp-action="Predict" method="post">
-        <div asp-validation-summary="All" style="color:var(--r);font-size:12px;margin-bottom:16px"></div>
-        <div class="fg2">
-            <div class="fg"><label asp-for="Date" class="fl">Match Date</label><input asp-for="Date" type="date" class="fc"/></div>
-            <div class="fg"><label asp-for="League" class="fl">League</label><select asp-for="League" class="fsel"><option value="">-- Select --</option><option>Premier League</option><option>LaLiga</option><option>Bundesliga</option><option>Serie A</option><option>Ligue 1</option></select></div>
-            <div class="fg"><label asp-for="HomeTeam" class="fl">Home Team</label><input asp-for="HomeTeam" class="fc" placeholder="e.g. Arsenal"/></div>
-            <div class="fg"><label asp-for="AwayTeam" class="fl">Away Team</label><input asp-for="AwayTeam" class="fc" placeholder="e.g. Chelsea"/></div>
-        </div>
-        <div class="fg2" style="margin-top:8px">
-            <div class="fg"><label asp-for="HomeCoach" class="fl">Home Coach</label><input asp-for="HomeCoach" class="fc" placeholder="Optional"/></div>
-            <div class="fg"><label asp-for="AwayCoach" class="fl">Away Coach</label><input asp-for="AwayCoach" class="fc" placeholder="Optional"/></div>
+<form asp-action="Predict" method="post" onsubmit="document.getElementById('spinner').classList.add('active')">
+
+    <div class="card">
+        <div class="card-header">&#9917; Match Information</div>
+        <div asp-validation-summary="All" style="color:var(--red);font-size:12px;margin-bottom:16px"></div>
+
+        <div class="form-grid">
+            <div class="form-group">
+                <label asp-for="Date" class="form-label">Match Date</label>
+                <input asp-for="Date" type="date" class="form-control" />
+                <span asp-validation-for="Date" class="field-validation-error"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="League" class="form-label">League</label>
+                <select asp-for="League" class="form-select">
+                    <option value="">-- Select --</option>
+                    <option>Premier League</option>
+                    <option>LaLiga</option>
+                    <option>Bundesliga</option>
+                    <option>Serie A</option>
+                    <option>Ligue 1</option>
+                </select>
+                <span asp-validation-for="League" class="field-validation-error"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="HomeTeam" class="form-label">Home Team</label>
+                <input asp-for="HomeTeam" class="form-control" placeholder="e.g. Arsenal" />
+                <span asp-validation-for="HomeTeam" class="field-validation-error"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="AwayTeam" class="form-label">Away Team</label>
+                <input asp-for="AwayTeam" class="form-control" placeholder="e.g. Chelsea" />
+                <span asp-validation-for="AwayTeam" class="field-validation-error"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="HomeCoach" class="form-label">Home Coach</label>
+                <input asp-for="HomeCoach" class="form-control" placeholder="Optional" />
+            </div>
+            <div class="form-group">
+                <label asp-for="AwayCoach" class="form-label">Away Coach</label>
+                <input asp-for="AwayCoach" class="form-control" placeholder="Optional" />
+            </div>
         </div>
     </div>
 
-    <div class="crd" style="margin-top:0">
-        <div class="crd-hd">🎲 Odds (Optional — improves accuracy)</div>
-        <div class="fg3">
+    <div class="card">
+        <div class="card-header">&#127922; Odds (Optional — improves accuracy)</div>
+        <div class="form-grid-3">
             <div>
                 <div style="color:var(--tx2);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px">Bet365</div>
-                <div class="fg"><label class="fl" style="color:var(--g)">Home (1)</label><input asp-for="Bet365Home" type="number" step="0.01" class="fc" placeholder="e.g. 2.10"/></div>
-                <div class="fg"><label class="fl" style="color:var(--y)">Draw (X)</label><input asp-for="Bet365Draw" type="number" step="0.01" class="fc" placeholder="e.g. 3.50"/></div>
-                <div class="fg"><label class="fl" style="color:var(--b)">Away (2)</label><input asp-for="Bet365Away" type="number" step="0.01" class="fc" placeholder="e.g. 4.00"/></div>
+                <div class="form-group">
+                    <label asp-for="Bet365Home" class="form-label" style="color:var(--green)">Home (1)</label>
+                    <input asp-for="Bet365Home" type="number" step="0.01" class="form-control" placeholder="e.g. 2.10" />
+                </div>
+                <div class="form-group">
+                    <label asp-for="Bet365Draw" class="form-label" style="color:var(--yellow)">Draw (X)</label>
+                    <input asp-for="Bet365Draw" type="number" step="0.01" class="form-control" placeholder="e.g. 3.50" />
+                </div>
+                <div class="form-group">
+                    <label asp-for="Bet365Away" class="form-label" style="color:var(--blue)">Away (2)</label>
+                    <input asp-for="Bet365Away" type="number" step="0.01" class="form-control" placeholder="e.g. 4.00" />
+                </div>
             </div>
             <div style="border-left:1px solid var(--brd);padding:0 20px">
                 <div style="color:var(--tx2);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px">Pinnacle</div>
-                <div class="fg"><input type="number" step="0.01" class="fc" placeholder="Home odds"/></div>
-                <div class="fg"><input type="number" step="0.01" class="fc" placeholder="Draw odds"/></div>
-                <div class="fg"><input type="number" step="0.01" class="fc" placeholder="Away odds"/></div>
+                <div class="form-group">
+                    <label asp-for="PinnacleHome" class="form-label" style="color:var(--green)">Home (1)</label>
+                    <input asp-for="PinnacleHome" type="number" step="0.01" class="form-control" placeholder="e.g. 2.15" />
+                </div>
+                <div class="form-group">
+                    <label asp-for="PinnacleDraw" class="form-label" style="color:var(--yellow)">Draw (X)</label>
+                    <input asp-for="PinnacleDraw" type="number" step="0.01" class="form-control" placeholder="e.g. 3.40" />
+                </div>
+                <div class="form-group">
+                    <label asp-for="PinnacleAway" class="form-label" style="color:var(--blue)">Away (2)</label>
+                    <input asp-for="PinnacleAway" type="number" step="0.01" class="form-control" placeholder="e.g. 3.90" />
+                </div>
             </div>
             <div>
                 <div style="color:var(--tx2);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px">William Hill</div>
-                <div class="fg"><input type="number" step="0.01" class="fc" placeholder="Home odds"/></div>
-                <div class="fg"><input type="number" step="0.01" class="fc" placeholder="Draw odds"/></div>
-                <div class="fg"><input type="number" step="0.01" class="fc" placeholder="Away odds"/></div>
+                <div class="form-group">
+                    <input type="number" step="0.01" class="form-control" placeholder="Home odds (not sent)" disabled title="William Hill not yet wired to model" />
+                </div>
+                <div class="form-group">
+                    <input type="number" step="0.01" class="form-control" placeholder="Draw odds (not sent)" disabled title="William Hill not yet wired to model" />
+                </div>
+                <div class="form-group">
+                    <input type="number" step="0.01" class="form-control" placeholder="Away odds (not sent)" disabled title="William Hill not yet wired to model" />
+                </div>
             </div>
         </div>
-        <button type="submit" class="btn btn-g btn-lg" style="width:100%;margin-top:24px">⚽ Predict Result</button>
-    </form>
-</div>
+
+        <button type="submit" class="btn btn-green btn-lg" style="width:100%;margin-top:24px">&#9917; Predict Result</button>
+    </div>
+
+</form>

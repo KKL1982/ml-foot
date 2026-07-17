@@ -1,0 +1,14 @@
+@echo off
+set APPDATA=C:\Users\lkossonou\AppData\Roaming
+set LOCALAPPDATA=C:\Users\lkossonou\AppData\Local
+set PROGRAMDATA=C:\ProgramData
+set USERPROFILE=C:\Users\lkossonou
+set SystemDrive=C:
+set SystemRoot=C:\Windows
+set HOMEDRIVE=C:
+set HOMEPATH=\Users\lkossonou
+echo APPDATA=%APPDATA%
+echo LOCALAPPDATA=%LOCALAPPDATA%
+echo PROGRAMDATA=%PROGRAMDATA%
+echo SystemDrive=%SystemDrive%
+dotnet build

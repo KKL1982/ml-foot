@@ -34,10 +34,18 @@ class Program
         compareCommand.AddOption(compareInputOpt);
         compareCommand.SetHandler(CompareAsync, compareInputOpt);
 
+        var tuneCommand = new Command("tune", "Grid search LightGbm hyperparameters");
+        var tuneInputOpt = new Option<string>("--input", "Path to training CSV file") { IsRequired = true };
+        var tuneOutputOpt = new Option<string>("--output", () => "models/model.zip", "Path to save best model");
+        tuneCommand.AddOption(tuneInputOpt);
+        tuneCommand.AddOption(tuneOutputOpt);
+        tuneCommand.SetHandler(TuneAsync, tuneInputOpt, tuneOutputOpt);
+
         var root = new RootCommand("FootballPrediction — 1X2 match prediction tool");
         root.AddCommand(trainCommand);
         root.AddCommand(predictCommand);
         root.AddCommand(compareCommand);
+        root.AddCommand(tuneCommand);
 
         return await root.InvokeAsync(args);
     }
@@ -62,11 +70,9 @@ class Program
             return;
         }
 
-        // Build features (chronological order preserved)
         var features = FeatureEngineer.BuildFeatures(matches);
         Console.WriteLine($"Built features for {features.Count} matches.");
 
-        // Select trainer
         var trainerKind = trainer.ToLowerInvariant() switch
         {
             "sdca" => ModelTrainer.TrainerKind.SdcaMaximumEntropy,
@@ -75,11 +81,9 @@ class Program
             _ => ModelTrainer.TrainerKind.SdcaMaximumEntropy
         };
 
-        // Train model with chronological split
         var mlTrainer = new ModelTrainer();
         var result = mlTrainer.TrainAndEvaluate(features, trainerKind, trainFraction: 0.8);
 
-        // Print metrics
         if (result.Metrics != null)
         {
             Console.WriteLine(ModelEvaluator.FormatMetrics(result.Metrics));
@@ -90,7 +94,6 @@ class Program
             Console.WriteLine("Not enough data for evaluation (< 10 test matches). Model trained on all data.");
         }
 
-        // Save model
         var schema = mlTrainer.GetDataView(features);
         mlTrainer.SaveModel(result.Model, schema, output);
         Console.WriteLine($"Model saved to: {output}");
@@ -131,7 +134,6 @@ class Program
         var predictions = predictor.Predict(features);
         Console.WriteLine($"Generated {predictions.Count} predictions.");
 
-        // Write output CSV
         await using var writer = new StreamWriter(output);
         await writer.WriteLineAsync("Date,League,HomeTeam,AwayTeam,PredictedResult,Probability1,ProbabilityX,Probability2,Confidence,Comment");
 
@@ -194,6 +196,53 @@ class Program
                 Console.WriteLine(ModelEvaluator.FormatConfusionMatrix(r.Metrics));
             }
         }
+    }
+
+    static async Task TuneAsync(string input, string output)
+    {
+        Console.WriteLine($"Loading matches from: {input}");
+
+        if (!File.Exists(input))
+        {
+            Console.Error.WriteLine($"Error: File not found: {input}");
+            return;
+        }
+
+        var parser = new CsvParserService();
+        var matches = await parser.ParseMatchesAsync(input);
+        Console.WriteLine($"Parsed {matches.Count} matches.");
+
+        if (matches.Count < 20)
+        {
+            Console.Error.WriteLine("Error: Need at least 20 matches.");
+            return;
+        }
+
+        var features = FeatureEngineer.BuildFeatures(matches);
+        Console.WriteLine($"Built features for {features.Count} matches.");
+
+        var mlTrainer = new ModelTrainer();
+
+        Console.WriteLine("\n=== LightGbm Grid Search ===\n");
+        var results = mlTrainer.TuneLightGbm(features, trainFraction: 0.8);
+
+        Console.WriteLine($"\n=== Top 5 Results ===\n");
+        Console.WriteLine($"{"Rank",-5} {"Accuracy",-12} {"LogLoss",-10} {"HyperParams",-40}");
+        Console.WriteLine(new string('-', 70));
+
+        for (int i = 0; i < Math.Min(5, results.Count); i++)
+        {
+            var r = results[i];
+            Console.WriteLine($"{i + 1,-5} {r.Accuracy:P2,-12} {r.LogLoss:F4,-10} {r.HyperParams,-40}");
+        }
+
+        // Save best model
+        var best = results[0];
+        var schema = mlTrainer.GetDataView(features);
+        mlTrainer.SaveModel(best.Model, schema, output);
+        Console.WriteLine($"\nBest model saved to: {output}");
+        Console.WriteLine($"Best params: {best.HyperParams}");
+        Console.WriteLine($"Best accuracy: {best.Accuracy:P2}");
     }
 
     static string Escape(string value) => value.Contains(',') ? $"\"{value}\"" : value;

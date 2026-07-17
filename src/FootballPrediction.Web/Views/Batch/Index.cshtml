@@ -2,22 +2,27 @@
     ViewData["Title"] = "CSV Upload";
 }
 
-<div class="pg-title">Batch CSV Prediction</div>
+<div class="page-title">Batch CSV Prediction</div>
 
-<div class="crd">
-    <div class="crd-hd">📁 Upload Match Data</div>
+<div class="card">
+    <div class="card-header">&#128193; Upload Match Data</div>
     <form asp-action="Upload" method="post" enctype="multipart/form-data">
-        <div asp-validation-summary="All" style="color:var(--r);font-size:12px;margin-bottom:16px"></div>
-        <div class="up" id="uploadZone">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17,8 12,3 7,8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <div asp-validation-summary="All" style="color:var(--red);font-size:12px;margin-bottom:16px"></div>
+        <div class="upload-zone" id="uploadZone">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                <polyline points="17,8 12,3 7,8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
             <p class="upload-text">Drop your CSV file here<br>or <strong>click to browse</strong></p>
-            <input type="file" name="file" id="fileInput" accept=".csv" style="display:none"/>
+            <input type="file" name="file" id="fileInput" accept=".csv" style="display:none" />
         </div>
-        <button type="submit" class="btn btn-g btn-lg" style="width:100%;margin-top:18px">⚡ Launch Batch Prediction</button>
+        <button type="submit" class="btn btn-green btn-lg" style="width:100%;margin-top:18px">&#9889; Launch Batch Prediction</button>
     </form>
 </div>
-<div class="crd">
-    <div class="crd-hd">📋 Expected CSV Format</div>
+
+<div class="card">
+    <div class="card-header">&#128203; Expected CSV Format</div>
     <pre style="color:var(--tx2);font-size:11px;background:var(--bg);padding:16px;border-radius:8px;overflow-x:auto;line-height:1.8">
 Date,League,Season,HomeTeam,AwayTeam,Bet365_1,Bet365_X,Bet365_2,Pinnacle_1,Pinnacle_X,Pinnacle_2
 2024-08-16,Premier League,2024-2025,Arsenal,Chelsea,2.10,3.50,4.00,2.15,3.40,3.90

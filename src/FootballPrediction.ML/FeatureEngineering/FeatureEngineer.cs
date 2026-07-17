@@ -12,7 +12,7 @@ public static class FeatureEngineer
         var result = new List<MatchData>(sorted.Count);
 
         // Track coach tenure per team
-        var coachStartDates = new Dictionary<string, Dictionary<string, DateTime>>(StringComparer.OrdinalIgnoreCase);
+        var coachMatchCounts = new Dictionary<string, Dictionary<string, int>>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var match in sorted)
         {
@@ -39,8 +39,8 @@ public static class FeatureEngineer
             }
 
             // Coach tenure (number of matches this coach has been with the team before this match)
-            var homeTenure = GetCoachTenure(match.HomeTeam, match.HomeCoach, match.Date, coachStartDates);
-            var awayTenure = GetCoachTenure(match.AwayTeam, match.AwayCoach, match.Date, coachStartDates);
+            var homeTenure = GetCoachTenure(match.HomeTeam, match.HomeCoach, match.Date, coachMatchCounts);
+            var awayTenure = GetCoachTenure(match.AwayTeam, match.AwayCoach, match.Date, coachMatchCounts);
 
             result.Add(new MatchData
             {
@@ -76,26 +76,27 @@ public static class FeatureEngineer
         string team,
         string? coach,
         DateTime matchDate,
-        Dictionary<string, Dictionary<string, DateTime>> coachStartDates)
+        Dictionary<string, Dictionary<string, int>> coachMatchCounts)
     {
         if (string.IsNullOrEmpty(coach) || coach == "Unknown")
             return 0;
 
         // Ensure team entry exists
-        if (!coachStartDates.ContainsKey(team))
-            coachStartDates[team] = new Dictionary<string, DateTime>(StringComparer.OrdinalIgnoreCase);
+        if (!coachMatchCounts.ContainsKey(team))
+            coachMatchCounts[team] = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
         // If this is the first time we see this coach for this team, record the start
-        if (!coachStartDates[team].ContainsKey(coach))
+        if (!coachMatchCounts[team].ContainsKey(coach))
         {
-            coachStartDates[team][coach] = matchDate;
+            coachMatchCounts[team][coach] = 1;
             return 0; // First match, tenure = 0
         }
 
-        // Count matches this coach has had with this team before this match
-        var startDate = coachStartDates[team][coach];
+        // Coach already seen: return current count as tenure, increment for next time
+        var currentCount = coachMatchCounts[team][coach];
+        coachMatchCounts[team][coach] = currentCount + 1;
         // We approximate tenure as number of matches seen so far for this coach
         // A simpler approach: count how many times we've seen this coach before
-        return coachStartDates[team].Where(kvp => kvp.Key == coach).Count();
+        return currentCount;
     }
 }

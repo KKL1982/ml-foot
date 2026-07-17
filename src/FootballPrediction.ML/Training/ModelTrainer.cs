@@ -27,18 +27,29 @@ public class ModelTrainer
         MulticlassClassificationMetrics? Metrics,
         TrainerKind Trainer,
         double Accuracy,
-        double LogLoss);
+        double LogLoss,
+        string? HyperParams = null);
+
+    public record LightGbmOptions(
+        int NumberOfLeaves = 20,
+        double LearningRate = 0.1,
+        int MinimumExampleCountPerLeaf = 10)
+    {
+        public override string ToString() =>
+            $"Leaves={NumberOfLeaves}, LR={LearningRate}, MinData={MinimumExampleCountPerLeaf}";
+    }
 
     public TrainingResult TrainAndEvaluate(
         IReadOnlyList<MatchData> data,
         TrainerKind trainer = TrainerKind.SdcaMaximumEntropy,
-        double trainFraction = 0.8)
+        double trainFraction = 0.8,
+        LightGbmOptions? lightGbmOptions = null)
     {
         int trainCount = (int)(data.Count * trainFraction);
         var trainData = data.Take(trainCount).ToList();
         var testData = data.Skip(trainCount).ToList();
 
-        var pipeline = BuildPipeline(trainer);
+        var pipeline = BuildPipeline(trainer, lightGbmOptions);
 
         var trainView = _mlContext.Data.LoadFromEnumerable(trainData);
         var model = pipeline.Fit(trainView);
@@ -59,7 +70,8 @@ public class ModelTrainer
             metrics,
             trainer,
             metrics?.MicroAccuracy ?? 0,
-            metrics?.LogLoss ?? 0);
+            metrics?.LogLoss ?? 0,
+            lightGbmOptions?.ToString());
     }
 
     public List<TrainingResult> TrainAllAndCompare(IReadOnlyList<MatchData> data, double trainFraction = 0.8)
@@ -82,10 +94,48 @@ public class ModelTrainer
         return results;
     }
 
-    private IEstimator<ITransformer> BuildPipeline(TrainerKind trainer)
+    /// <summary>
+    /// Grid search over LightGbm hyperparameters. Returns results sorted by accuracy descending.
+    /// </summary>
+    public List<TrainingResult> TuneLightGbm(
+        IReadOnlyList<MatchData> data,
+        double trainFraction = 0.8,
+        int[]? numLeavesOptions = null,
+        double[]? learningRateOptions = null,
+        int[]? minDataOptions = null)
     {
-        // Use IEstimator<ITransformer> to avoid generic type mismatch when chaining
-        // different transformer types (OneHotEncoding → Concatenate → MapValueToKey → Trainer → MapKeyToValue)
+        numLeavesOptions ??= new[] { 10, 20, 31, 50 };
+        learningRateOptions ??= new[] { 0.05, 0.1, 0.2 };
+        minDataOptions ??= new[] { 5, 10, 20 };
+
+        var results = new List<TrainingResult>();
+        int total = numLeavesOptions.Length * learningRateOptions.Length * minDataOptions.Length;
+        int done = 0;
+
+        foreach (var leaves in numLeavesOptions)
+        foreach (var lr in learningRateOptions)
+        foreach (var minData in minDataOptions)
+        {
+            done++;
+            var opts = new LightGbmOptions(leaves, lr, minData);
+            try
+            {
+                var result = TrainAndEvaluate(data, TrainerKind.LightGbm, trainFraction, opts);
+                results.Add(result);
+                Console.WriteLine($"[{done}/{total}] {opts} => Accuracy={result.Accuracy:P2} LogLoss={result.LogLoss:F4}");
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"[{done}/{total}] {opts} => FAILED: {ex.Message}");
+            }
+        }
+
+        results.Sort((a, b) => b.Accuracy.CompareTo(a.Accuracy));
+        return results;
+    }
+
+    private IEstimator<ITransformer> BuildPipeline(TrainerKind trainer, LightGbmOptions? lightGbmOptions = null)
+    {
         IEstimator<ITransformer> pipeline = _mlContext.Transforms.Categorical.OneHotEncoding(nameof(MatchData.League));
         pipeline = pipeline.Append(_mlContext.Transforms.Categorical.OneHotEncoding(nameof(MatchData.Season)));
         pipeline = pipeline.Append(_mlContext.Transforms.Categorical.OneHotEncoding(nameof(MatchData.HomeTeam)));
@@ -130,14 +180,18 @@ public class ModelTrainer
                     .LbfgsMaximumEntropy("Label", "Features")),
 
             TrainerKind.LightGbm => pipeline
-                .Append(_mlContext.MulticlassClassification.Trainers
-                    .LightGbm("Label", "Features")),
+                .Append(_mlContext.MulticlassClassification.Trainers.LightGbm(
+                    labelColumnName: "Label",
+                    featureColumnName: "Features",
+                    numberOfLeaves: lightGbmOptions?.NumberOfLeaves,
+                    learningRate: lightGbmOptions?.LearningRate,
+                    minimumExampleCountPerLeaf: lightGbmOptions?.MinimumExampleCountPerLeaf)),
 
             _ => throw new ArgumentException($"Unknown trainer: {trainer}")
         };
 
         pipeline = pipeline
-            .Append(_mlContext.Transforms.Conversion.MapKeyToValue(nameof(MatchPrediction.PredictedResult)));
+            .Append(_mlContext.Transforms.Conversion.MapKeyToValue(nameof(MatchPrediction.PredictedResult), "PredictedLabel"));
 
         return pipeline;
     }

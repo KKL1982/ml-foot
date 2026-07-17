@@ -1,34 +1,77 @@
 @model FootballPrediction.Web.Models.BatchResultViewModel
 @{
     ViewData["Title"] = "Batch Results";
-    int c1 = Model.Predictions.Count(p => p.PredictedResult == "1");
-    int cX = Model.Predictions.Count(p => p.PredictedResult == "X");
-    int c2 = Model.Predictions.Count(p => p.PredictedResult == "2");
+    int count1 = Model.Predictions.Count(p => p.PredictedResult == "1");
+    int countX = Model.Predictions.Count(p => p.PredictedResult == "X");
+    int count2 = Model.Predictions.Count(p => p.PredictedResult == "2");
 }
 
-<div class="pg-title">Batch Prediction Results</div>
+<div class="page-title">Batch Prediction Results</div>
 
-<div class="kpi-g">
-    <div class="kpi b"><div class="kpi-hd">📁 Matches Processed</div><div class="kpi-val">@Model.TotalMatches</div><div class="kpi-sub">From uploaded CSV</div></div>
-    <div class="kpi g"><div class="kpi-hd">✅ Predictions</div><div class="kpi-val">@Model.SuccessfulPredictions</div><div class="kpi-sub">Successfully predicted</div></div>
-    <div class="kpi"><div class="kpi-hd">📊 Distribution</div><div class="kpi-val" style="font-size:18px"><span style="color:var(--g)">@c1</span> / <span style="color:var(--y)">@cX</span> / <span style="color:var(--b)">@c2</span></div><div class="kpi-sub">1 — X — 2</div></div>
-    <div class="kpi"><div class="kpi-hd">📈 Avg Confidence</div><div class="kpi-val" style="font-size:18px">@(Model.Predictions.Any() ? Model.Predictions.Average(p => p.Confidence).ToString("P0") : "—")</div></div>
+<div class="kpi-grid">
+    <div class="kpi-card kpi-blue">
+        <div class="kpi-header">&#128193; Matches Processed</div>
+        <div class="kpi-value">@Model.TotalMatches</div>
+        <div class="kpi-sub">From uploaded CSV</div>
+    </div>
+    <div class="kpi-card kpi-green">
+        <div class="kpi-header">&#9989; Predictions</div>
+        <div class="kpi-value">@Model.SuccessfulPredictions</div>
+        <div class="kpi-sub">Successfully predicted</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-header">&#128202; Distribution</div>
+        <div class="kpi-value" style="font-size:18px">
+            <span style="color:var(--green)">@count1</span> /
+            <span style="color:var(--yellow)">@countX</span> /
+            <span style="color:var(--blue)">@count2</span>
+        </div>
+        <div class="kpi-sub">1 &mdash; X &mdash; 2</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-header">&#128200; Avg Confidence</div>
+        <div class="kpi-value" style="font-size:18px">
+            @(Model.Predictions.Any() ? Model.Predictions.Average(p => p.Confidence).ToString("P0") : "—")
+        </div>
+    </div>
 </div>
 
-<div class="crd">
-    <div class="crd-hd" style="justify-content:space-between"><span>Predictions Table</span><a href="/batch" class="btn btn-o btn-sm">New Upload</a></div>
-    <div class="tbl-w">
-        <table class="tbl">
-            <thead><tr><th>Date</th><th>League</th><th>Home</th><th>Away</th><th>Pred</th><th>1</th><th>X</th><th>2</th><th>Conf</th><th>Comment</th></tr></thead>
+<div class="card">
+    <div class="card-header" style="justify-content:space-between">
+        <span>Predictions Table</span>
+        <a href="/batch" class="btn btn-outline btn-sm">New Upload</a>
+    </div>
+    <div class="table-wrap">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>League</th>
+                    <th>Home</th>
+                    <th>Away</th>
+                    <th>Pred</th>
+                    <th>1</th>
+                    <th>X</th>
+                    <th>2</th>
+                    <th>Conf</th>
+                    <th>Comment</th>
+                </tr>
+            </thead>
             <tbody>
-                @foreach (var p in Model.Predictions) {
-                    string bdg = p.PredictedResult switch{"1"=>"bg1","X"=>"bgx","2"=>"bg2",_=>""};
-                    string cf = p.Confidence>=0.6?"cf-hi":p.Confidence>=0.45?"cf-md":"cf-lo";
+                @foreach (var p in Model.Predictions)
+                {
+                    string badgeClass = p.PredictedResult switch { "1" => "badge-1", "X" => "badge-X", "2" => "badge-2", _ => "" };
+                    string confClass  = p.Confidence >= 0.6 ? "conf-high" : p.Confidence >= 0.45 ? "conf-med" : "conf-low";
                     <tr>
-                        <td>@p.Date.ToString("yyyy-MM-dd")</td><td>@p.League</td><td>@p.HomeTeam</td><td>@p.AwayTeam</td>
-                        <td><span class="bg @bdg">@p.PredictedResult</span></td>
-                        <td>@p.Probability1.ToString("P0")</td><td>@p.ProbabilityX.ToString("P0")</td><td>@p.Probability2.ToString("P0")</td>
-                        <td><span class="bg @cf">@p.Confidence.ToString("P0")</span></td>
+                        <td>@p.Date.ToString("yyyy-MM-dd")</td>
+                        <td>@p.League</td>
+                        <td>@p.HomeTeam</td>
+                        <td>@p.AwayTeam</td>
+                        <td><span class="badge @badgeClass">@p.PredictedResult</span></td>
+                        <td>@p.Probability1.ToString("P0")</td>
+                        <td>@p.ProbabilityX.ToString("P0")</td>
+                        <td>@p.Probability2.ToString("P0")</td>
+                        <td><span class="badge @confClass">@p.Confidence.ToString("P0")</span></td>
                         <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="@p.Comment">@p.Comment</td>
                     </tr>
                 }
