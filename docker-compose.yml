@@ -1,0 +1,13 @@
+services:
+  web:
+    build: .
+    container_name: football-prediction
+    ports:
+      - "7575:7575"
+    volumes:
+      - ./models:/app/models:ro
+      - ./data:/app/data:rw
+    environment:
+      - ASPNETCORE_URLS=http://+:7575
+      - ASPNETCORE_ENVIRONMENT=Production
+    restart: unless-stopped

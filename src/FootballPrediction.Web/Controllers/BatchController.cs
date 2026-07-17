@@ -1,33 +1,31 @@
-using FootballPrediction.Application.Services;
+using FootballPrediction.Application.DTOs;
+using FootballPrediction.Application.Interfaces;
 using FootballPrediction.ML.FeatureEngineering;
-using FootballPrediction.ML.Prediction;
 using FootballPrediction.Web.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
+using System.Text;
 
 namespace FootballPrediction.Web.Controllers;
 
 public class BatchController : Controller
 {
-    private readonly MatchPredictor _predictor;
-    private readonly bool _modelLoaded;
-    private readonly string _modelPath;
+    private readonly IPredictionService _predictionService;
+    private readonly ICsvParser _csvParser;
+    private readonly ModelSettings _settings;
+    private readonly ILogger<BatchController> _logger;
 
-    public BatchController()
+    public BatchController(
+        IPredictionService predictionService,
+        ICsvParser csvParser,
+        IOptions<ModelSettings> options,
+        ILogger<BatchController> logger)
     {
-        _predictor = new MatchPredictor();
-        _modelPath = Path.Combine(Directory.GetCurrentDirectory(), "models", "model.zip");
-        try
-        {
-            if (System.IO.File.Exists(_modelPath))
-            {
-                _predictor.LoadModel(_modelPath);
-                _modelLoaded = true;
-            }
-        }
-        catch
-        {
-            _modelLoaded = false;
-        }
+        _predictionService = predictionService;
+        _csvParser = csvParser;
+        _settings = options.Value;
+        _logger = logger;
+        _logger.LogInformation("BatchController initialized — mode: {Mode}", _settings.DefaultMode);
     }
 
     [HttpGet]
@@ -53,103 +51,65 @@ public class BatchController : Controller
                 await file.CopyToAsync(stream);
             }
 
-            var parser = new CsvParserService();
-            var matches = await parser.ParseMatchesAsync(tempPath);
-
+            var matches = await _csvParser.ParseMatchesAsync(tempPath);
             var features = FeatureEngineer.BuildFeatures(matches);
 
-            List<PredictionResultViewModel> predictions;
-
-            if (_modelLoaded && features.Count > 0)
+            // Build PredictionInputDto list from features
+            var inputs = features.Select(f => new PredictionInputDto
             {
-                // Use ML model
-                var mlPredictions = _predictor.Predict(features);
-                predictions = features.Select((f, i) =>
-                {
-                    var pred = mlPredictions[i];
-                    double maxProb = Math.Max(Math.Max(pred.Probability1, pred.ProbabilityX), pred.Probability2);
+                Date = DateTime.Today,
+                League = f.League,
+                HomeTeam = f.HomeTeam,
+                AwayTeam = f.AwayTeam,
+                Bet365Home = f.Bet365HomeProb > 0 ? 1.0 / f.Bet365HomeProb : null,
+                Bet365Draw = f.Bet365DrawProb > 0 ? 1.0 / f.Bet365DrawProb : null,
+                Bet365Away = f.Bet365AwayProb > 0 ? 1.0 / f.Bet365AwayProb : null,
+                PinnacleHome = f.PinnacleHomeProb > 0 ? 1.0 / f.PinnacleHomeProb : null,
+                PinnacleDraw = f.PinnacleDrawProb > 0 ? 1.0 / f.PinnacleDrawProb : null,
+                PinnacleAway = f.PinnacleAwayProb > 0 ? 1.0 / f.PinnacleAwayProb : null
+            }).ToList();
 
-                    string comment = maxProb switch
-                    {
-                        > 0.6 when pred.PredictedResult == "1" => "Strong home favorite",
-                        > 0.6 when pred.PredictedResult == "2" => "Strong away favorite",
-                        > 0.5 when pred.PredictedResult == "1" => "Home win likely",
-                        > 0.5 when pred.PredictedResult == "2" => "Away win likely",
-                        > 0.4 => "Balanced match",
-                        _ => "Highly uncertain"
-                    };
+            // Binary predictions (default)
+            var binaryPreds = _predictionService.PredictBatchBinary(inputs);
 
-                    return new PredictionResultViewModel
-                    {
-                        Date = matches[i].Date,
-                        League = matches[i].League,
-                        HomeTeam = matches[i].HomeTeam,
-                        AwayTeam = matches[i].AwayTeam,
-                        PredictedResult = pred.PredictedResult,
-                        Probability1 = Math.Round(pred.Probability1, 3),
-                        ProbabilityX = Math.Round(pred.ProbabilityX, 3),
-                        Probability2 = Math.Round(pred.Probability2, 3),
-                        Confidence = Math.Round(maxProb, 3),
-                        Comment = comment,
-                        ModelUsed = "ML Model (SdcaMaximumEntropy)"
-                    };
-                }).ToList();
-            }
-            else
+            // Build CSV for download
+            var csv = new StringBuilder();
+            csv.AppendLine("Date,League,HomeTeam,AwayTeam,Bet,HomeWinProbability,Confidence,Comment");
+            var viewModels = new List<PredictionResultViewModel>();
+            for (int i = 0; i < binaryPreds.Count; i++)
             {
-                // Fallback: odds-based (Bet365 when available, otherwise Pinnacle)
-                predictions = features.Select((f, i) =>
+                var bp = binaryPreds[i];
+                csv.AppendLine($"{bp.Date:yyyy-MM-dd},{Escape(bp.League)},{Escape(bp.HomeTeam)},{Escape(bp.AwayTeam)},{bp.Bet},{bp.HomeWinProbability:F3},{bp.Confidence:F3},{Escape(bp.Comment)}");
+                viewModels.Add(new PredictionResultViewModel
                 {
-                    // Prefer Bet365, fall back to Pinnacle
-                    float homeP = f.Bet365HomeProb, drawP = f.Bet365DrawProb, awayP = f.Bet365AwayProb;
-                    if (Math.Abs(homeP + drawP + awayP - 1.0) > 0.01 &&
-                        Math.Abs(f.PinnacleHomeProb + f.PinnacleDrawProb + f.PinnacleAwayProb - 1.0) < 0.01)
-                    {
-                        homeP = f.PinnacleHomeProb;
-                        drawP = f.PinnacleDrawProb;
-                        awayP = f.PinnacleAwayProb;
-                    }
-
-                    double maxProb = Math.Max(Math.Max(homeP, drawP), awayP);
-                    string result = homeP >= drawP && homeP >= awayP ? "1"
-                        : drawP >= homeP && drawP >= awayP ? "X"
-                        : "2";
-
-                    string comment = maxProb switch
-                    {
-                        > 0.6 when result == "1" => "Strong home favorite",
-                        > 0.6 when result == "2" => "Strong away favorite",
-                        > 0.5 when result == "1" => "Home win likely",
-                        > 0.5 when result == "2" => "Away win likely",
-                        > 0.4 => "Balanced match",
-                        _ => "Highly uncertain"
-                    };
-
-                    return new PredictionResultViewModel
-                    {
-                        Date = matches[i].Date,
-                        League = matches[i].League,
-                        HomeTeam = matches[i].HomeTeam,
-                        AwayTeam = matches[i].AwayTeam,
-                        PredictedResult = result,
-                        Probability1 = Math.Round(homeP, 3),
-                        ProbabilityX = Math.Round(drawP, 3),
-                        Probability2 = Math.Round(awayP, 3),
-                        Confidence = Math.Round(maxProb, 3),
-                        Comment = comment,
-                        ModelUsed = "Odds-based (no model loaded)"
-                    };
-                }).ToList();
+                    Date = bp.Date,
+                    League = bp.League,
+                    HomeTeam = bp.HomeTeam,
+                    AwayTeam = bp.AwayTeam,
+                    PredictedResult = bp.Bet,
+                    Probability1 = bp.HomeWinProbability,
+                    Probability2 = bp.AwayWinProbability,
+                    Confidence = bp.Confidence,
+                    Comment = bp.Comment,
+                    ModelUsed = "ML Model (Binary)",
+                    Mode = "Binary",
+                    HomeWinProbability = bp.HomeWinProbability,
+                    AwayWinProbability = bp.AwayWinProbability
+                });
             }
 
-            var model = new BatchResultViewModel
+            TempData["BatchPredictionsCsv"] = csv.ToString();
+
+            _logger.LogInformation("Batch processed: {Total} matches, {Predictions} predictions",
+                matches.Count, binaryPreds.Count);
+
+            return View("Result", new BatchResultViewModel
             {
                 TotalMatches = matches.Count,
-                SuccessfulPredictions = predictions.Count,
-                Predictions = predictions
-            };
-
-            return View("Result", model);
+                SuccessfulPredictions = binaryPreds.Count,
+                Predictions = viewModels,
+                DownloadFileName = $"predictions_{DateTime.Now:yyyyMMdd_HHmmss}.csv"
+            });
         }
         finally
         {
@@ -157,4 +117,17 @@ public class BatchController : Controller
                 System.IO.File.Delete(tempPath);
         }
     }
+
+    [HttpGet]
+    public IActionResult Download()
+    {
+        var csv = TempData["BatchPredictionsCsv"] as string;
+        if (string.IsNullOrEmpty(csv))
+            return RedirectToAction("Index");
+
+        var fileName = $"predictions_{DateTime.Now:yyyyMMdd_HHmmss}.csv";
+        return File(Encoding.UTF8.GetBytes(csv), "text/csv", fileName);
+    }
+
+    private static string Escape(string value) => value.Contains(',') ? $"\"{value}\"" : value;
 }

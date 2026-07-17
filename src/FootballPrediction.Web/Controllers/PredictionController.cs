@@ -1,34 +1,26 @@
-using FootballPrediction.ML.DataModels;
-using FootballPrediction.ML.FeatureEngineering;
-using FootballPrediction.ML.Prediction;
+using FootballPrediction.Application.DTOs;
+using FootballPrediction.Application.Interfaces;
 using FootballPrediction.Web.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 
 namespace FootballPrediction.Web.Controllers;
 
 public class PredictionController : Controller
 {
-    private readonly MatchPredictor _predictor;
-    private readonly string _modelPath;
-    private bool _modelLoaded;
+    private readonly IPredictionService _predictionService;
+    private readonly ModelSettings _settings;
+    private readonly ILogger<PredictionController> _logger;
 
-    public PredictionController()
+    public PredictionController(
+        IPredictionService predictionService,
+        IOptions<ModelSettings> options,
+        ILogger<PredictionController> logger)
     {
-        _predictor = new MatchPredictor();
-        // Try to load model from default location
-        _modelPath = Path.Combine(Directory.GetCurrentDirectory(), "models", "model.zip");
-        try
-        {
-            if (System.IO.File.Exists(_modelPath))
-            {
-                _predictor.LoadModel(_modelPath);
-                _modelLoaded = true;
-            }
-        }
-        catch
-        {
-            _modelLoaded = false;
-        }
+        _predictionService = predictionService;
+        _settings = options.Value;
+        _logger = logger;
+        _logger.LogInformation("PredictionController initialized — mode: {Mode}", _settings.DefaultMode);
     }
 
     [HttpGet]
@@ -36,8 +28,9 @@ public class PredictionController : Controller
     {
         var model = new PredictionInputViewModel
         {
-            ModelLoaded = _modelLoaded,
-            ModelPath = _modelLoaded ? _modelPath : null
+            ModelLoaded = true,
+            ModelPath = Path.Combine(Directory.GetCurrentDirectory(), _settings.BinaryModelPath),
+            Mode = _settings.DefaultMode
         };
         return View(model);
     }
@@ -48,138 +41,77 @@ public class PredictionController : Controller
         if (!ModelState.IsValid)
             return View("Index", model);
 
-        // If ML model is loaded, use it for prediction
-        if (_modelLoaded)
-            return PredictWithModel(model);
+        var input = MapToDto(model);
 
-        // Fallback: odds-based prediction
-        double homeProb = 0.45, drawProb = 0.28, awayProb = 0.27;
-        string result = "1";
-        double confidence = 0.45;
-        string fallbackComment = "Home win likely";
+        if (model.Mode == "Multiclass")
+            return PredictMulticlass(input);
 
-        if (model.Bet365Home.HasValue && model.Bet365Draw.HasValue && model.Bet365Away.HasValue &&
-            model.Bet365Home > 1 && model.Bet365Draw > 1 && model.Bet365Away > 1)
-        {
-            var (hp, dp, ap) = OddsNormalizer.Normalize(
-                model.Bet365Home.Value, model.Bet365Draw.Value, model.Bet365Away.Value);
+        return PredictBinary(input, model.BinaryThreshold);
+    }
 
-            homeProb = hp;
-            drawProb = dp;
-            awayProb = ap;
+    private IActionResult PredictBinary(PredictionInputDto input, double threshold)
+    {
+        var pred = _predictionService.PredictBinary(input, threshold);
 
-            confidence = Math.Max(hp, Math.Max(dp, ap));
-            if (hp >= dp && hp >= ap) result = "1";
-            else if (dp >= hp && dp >= ap) result = "X";
-            else result = "2";
-
-            fallbackComment = confidence switch
-            {
-                > 0.6 when result == "1" => "Strong home favorite",
-                > 0.6 when result == "2" => "Strong away favorite",
-                > 0.5 when result == "1" => "Home win likely",
-                > 0.5 when result == "2" => "Away win likely",
-                > 0.4 => "Balanced match",
-                _ => "Highly uncertain"
-            };
-        }
+        _logger.LogInformation("Binary prediction: {Home} vs {Away} → {Bet} ({Conf:P0})",
+            pred.HomeTeam, pred.AwayTeam, pred.Bet, pred.Confidence);
 
         return View("Result", new PredictionResultViewModel
         {
-            Date = model.Date ?? DateTime.Today,
-            League = model.League,
-            HomeTeam = model.HomeTeam,
-            AwayTeam = model.AwayTeam,
-            PredictedResult = result,
-            Probability1 = Math.Round(homeProb, 3),
-            ProbabilityX = Math.Round(drawProb, 3),
-            Probability2 = Math.Round(awayProb, 3),
-            Confidence = Math.Round(confidence, 3),
-            Comment = fallbackComment,
-            ModelUsed = "Odds-based (no model loaded)"
+            Date = pred.Date,
+            League = pred.League,
+            HomeTeam = pred.HomeTeam,
+            AwayTeam = pred.AwayTeam,
+            PredictedResult = pred.Bet,
+            Probability1 = pred.HomeWinProbability,
+            ProbabilityX = 0,
+            Probability2 = pred.AwayWinProbability,
+            Confidence = pred.Confidence,
+            Comment = pred.Comment,
+            ModelUsed = "ML Model (Binary)",
+            Mode = "Binary",
+            HomeWinProbability = pred.HomeWinProbability,
+            AwayWinProbability = pred.AwayWinProbability
         });
     }
 
-    private IActionResult PredictWithModel(PredictionInputViewModel model)
+    private IActionResult PredictMulticlass(PredictionInputDto input)
     {
-        var matchData = BuildMatchDataFromInput(model);
-        var predictions = _predictor.Predict(new[] { matchData });
-        var pred = predictions[0];
+        var pred = _predictionService.PredictMulticlass(input);
 
-        var comment = pred.Probability1 switch
-        {
-            > 0.6f when pred.PredictedResult == "1" => "Strong home favorite",
-            > 0.6f when pred.PredictedResult == "2" => "Strong away favorite",
-            > 0.5f when pred.PredictedResult == "1" => "Home win likely",
-            > 0.5f when pred.PredictedResult == "2" => "Away win likely",
-            > 0.4f => "Balanced match",
-            _ => "Highly uncertain"
-        };
+        _logger.LogInformation("Multiclass prediction: {Home} vs {Away} → {Result} ({Conf:P0})",
+            pred.HomeTeam, pred.AwayTeam, pred.PredictedResult, pred.Confidence);
 
         return View("Result", new PredictionResultViewModel
         {
-            Date = model.Date ?? DateTime.Today,
-            League = model.League,
-            HomeTeam = model.HomeTeam,
-            AwayTeam = model.AwayTeam,
+            Date = pred.Date,
+            League = pred.League,
+            HomeTeam = pred.HomeTeam,
+            AwayTeam = pred.AwayTeam,
             PredictedResult = pred.PredictedResult,
-            Probability1 = Math.Round(pred.Probability1, 3),
-            ProbabilityX = Math.Round(pred.ProbabilityX, 3),
-            Probability2 = Math.Round(pred.Probability2, 3),
-            Confidence = Math.Round(Math.Max(pred.Probability1, Math.Max(pred.ProbabilityX, pred.Probability2)), 3),
-            Comment = comment,
-            ModelUsed = "ML Model (SdcaMaximumEntropy)"
+            Probability1 = pred.Probability1,
+            ProbabilityX = pred.ProbabilityX,
+            Probability2 = pred.Probability2,
+            Confidence = pred.Confidence,
+            Comment = pred.Comment,
+            ModelUsed = "ML Model (Multiclass)",
+            Mode = "Multiclass"
         });
     }
 
-    private static MatchData BuildMatchDataFromInput(PredictionInputViewModel model)
+    private static PredictionInputDto MapToDto(PredictionInputViewModel model) => new()
     {
-        float bet365Home = 0.33f, bet365Draw = 0.34f, bet365Away = 0.33f;
-        float pinHome = 0.33f, pinDraw = 0.34f, pinAway = 0.33f;
-
-        if (model.Bet365Home.HasValue && model.Bet365Draw.HasValue && model.Bet365Away.HasValue &&
-            model.Bet365Home > 1 && model.Bet365Draw > 1 && model.Bet365Away > 1)
-        {
-            var (hp, dp, ap) = OddsNormalizer.Normalize(
-                model.Bet365Home.Value, model.Bet365Draw.Value, model.Bet365Away.Value);
-            bet365Home = (float)hp;
-            bet365Draw = (float)dp;
-            bet365Away = (float)ap;
-        }
-
-        if (model.PinnacleHome.HasValue && model.PinnacleDraw.HasValue && model.PinnacleAway.HasValue &&
-            model.PinnacleHome > 1 && model.PinnacleDraw > 1 && model.PinnacleAway > 1)
-        {
-            var (hp, dp, ap) = OddsNormalizer.Normalize(
-                model.PinnacleHome.Value, model.PinnacleDraw.Value, model.PinnacleAway.Value);
-            pinHome = (float)hp;
-            pinDraw = (float)dp;
-            pinAway = (float)ap;
-        }
-
-        return new MatchData
-        {
-            League = model.League,
-            HomeTeam = model.HomeTeam,
-            AwayTeam = model.AwayTeam,
-            HomeCoach = model.HomeCoach ?? "Unknown",
-            AwayCoach = model.AwayCoach ?? "Unknown",
-            Season = string.Empty,
-            Bet365HomeProb = bet365Home,
-            Bet365DrawProb = bet365Draw,
-            Bet365AwayProb = bet365Away,
-            PinnacleHomeProb = pinHome,
-            PinnacleDrawProb = pinDraw,
-            PinnacleAwayProb = pinAway,
-            HomeForm5 = 0,
-            AwayForm5 = 0,
-            HomeGoalsForAvg = 0,
-            AwayGoalsForAvg = 0,
-            HomeGoalsAgainstAvg = 0,
-            AwayGoalsAgainstAvg = 0,
-            FormDiff = 0,
-            HomeCoachTenure = 0,
-            AwayCoachTenure = 0
-        };
-    }
+        Date = model.Date ?? DateTime.Today,
+        League = model.League,
+        HomeTeam = model.HomeTeam,
+        AwayTeam = model.AwayTeam,
+        HomeCoach = model.HomeCoach,
+        AwayCoach = model.AwayCoach,
+        Bet365Home = model.Bet365Home,
+        Bet365Draw = model.Bet365Draw,
+        Bet365Away = model.Bet365Away,
+        PinnacleHome = model.PinnacleHome,
+        PinnacleDraw = model.PinnacleDraw,
+        PinnacleAway = model.PinnacleAway
+    };
 }

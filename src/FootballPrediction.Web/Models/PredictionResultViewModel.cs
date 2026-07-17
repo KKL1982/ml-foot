@@ -12,5 +12,10 @@ public class PredictionResultViewModel
     public double Probability2 { get; set; }
     public double Confidence { get; set; }
     public string Comment { get; set; } = string.Empty;
-    public string ModelUsed { get; set; } = "Odds-based";
+    public string ModelUsed { get; set; } = "ML Model";
+    public string Mode { get; set; } = "Binary";
+
+    // Binary-specific
+    public double HomeWinProbability { get; set; }
+    public double AwayWinProbability { get; set; }
 }

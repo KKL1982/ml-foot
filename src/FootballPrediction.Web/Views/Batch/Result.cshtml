@@ -1,35 +1,52 @@
 @model FootballPrediction.Web.Models.BatchResultViewModel
 @{
     ViewData["Title"] = "Batch Results";
-    int count1 = Model.Predictions.Count(p => p.PredictedResult == "1");
+    int countHome = Model.Predictions.Count(p => p.PredictedResult == "HOME");
+    int countAway = Model.Predictions.Count(p => p.PredictedResult == "AWAY");
+    int countSkip = Model.Predictions.Count(p => p.PredictedResult == "SKIP");
     int countX = Model.Predictions.Count(p => p.PredictedResult == "X");
+    int count1 = Model.Predictions.Count(p => p.PredictedResult == "1");
     int count2 = Model.Predictions.Count(p => p.PredictedResult == "2");
+    bool isBinary = Model.Predictions.Any(p => p.Mode == "Binary");
 }
 
 <div class="page-title">Batch Prediction Results</div>
 
 <div class="kpi-grid">
     <div class="kpi-card kpi-blue">
-        <div class="kpi-header">&#128193; Matches Processed</div>
+        <div class="kpi-header">📁 Matches Processed</div>
         <div class="kpi-value">@Model.TotalMatches</div>
         <div class="kpi-sub">From uploaded CSV</div>
     </div>
     <div class="kpi-card kpi-green">
-        <div class="kpi-header">&#9989; Predictions</div>
+        <div class="kpi-header">✅ Predictions</div>
         <div class="kpi-value">@Model.SuccessfulPredictions</div>
         <div class="kpi-sub">Successfully predicted</div>
     </div>
     <div class="kpi-card">
-        <div class="kpi-header">&#128202; Distribution</div>
+        <div class="kpi-header">📊 Distribution</div>
         <div class="kpi-value" style="font-size:18px">
-            <span style="color:var(--green)">@count1</span> /
-            <span style="color:var(--yellow)">@countX</span> /
-            <span style="color:var(--blue)">@count2</span>
+            @if (isBinary)
+            {
+                <span style="color:var(--green)">@countHome</span>
+                <text> / </text>
+                <span style="color:var(--blue)">@countAway</span>
+                <text> / </text>
+                <span style="color:var(--yellow)">@countSkip</span>
+            }
+            else
+            {
+                <span style="color:var(--green)">@count1</span>
+                <text> / </text>
+                <span style="color:var(--yellow)">@countX</span>
+                <text> / </text>
+                <span style="color:var(--blue)">@count2</span>
+            }
         </div>
-        <div class="kpi-sub">1 &mdash; X &mdash; 2</div>
+        <div class="kpi-sub">@(isBinary ? "HOME — AWAY — SKIP" : "1 — X — 2")</div>
     </div>
     <div class="kpi-card">
-        <div class="kpi-header">&#128200; Avg Confidence</div>
+        <div class="kpi-header">📈 Avg Confidence</div>
         <div class="kpi-value" style="font-size:18px">
             @(Model.Predictions.Any() ? Model.Predictions.Average(p => p.Confidence).ToString("P0") : "—")
         </div>
@@ -39,7 +56,13 @@
 <div class="card">
     <div class="card-header" style="justify-content:space-between">
         <span>Predictions Table</span>
-        <a href="/batch" class="btn btn-outline btn-sm">New Upload</a>
+        <div style="display:flex;gap:8px">
+            @if (Model.HasDownload)
+            {
+                <a href="/batch/download" class="btn btn-green btn-sm">📥 Download CSV</a>
+            }
+            <a href="/batch" class="btn btn-outline btn-sm">New Upload</a>
+        </div>
     </div>
     <div class="table-wrap">
         <table class="table">
@@ -49,29 +72,47 @@
                     <th>League</th>
                     <th>Home</th>
                     <th>Away</th>
-                    <th>Pred</th>
-                    <th>1</th>
-                    <th>X</th>
-                    <th>2</th>
-                    <th>Conf</th>
+                    <th>Bet</th>
+                    @if (isBinary)
+                    {
+                        <th>HomeProb</th>
+                        <th>Conf</th>
+                    }
+                    else
+                    {
+                        <th>1</th>
+                        <th>X</th>
+                        <th>2</th>
+                        <th>Conf</th>
+                    }
                     <th>Comment</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach (var p in Model.Predictions)
                 {
-                    string badgeClass = p.PredictedResult switch { "1" => "badge-1", "X" => "badge-X", "2" => "badge-2", _ => "" };
-                    string confClass  = p.Confidence >= 0.6 ? "conf-high" : p.Confidence >= 0.45 ? "conf-med" : "conf-low";
+                    string badgeClass = isBinary
+                        ? (p.PredictedResult == "HOME" ? "badge-1" : p.PredictedResult == "AWAY" ? "badge-2" : "badge-X")
+                        : (p.PredictedResult switch { "1" => "badge-1", "X" => "badge-X", "2" => "badge-2", _ => "" });
+                    string confClass = p.Confidence >= 0.6 ? "conf-high" : p.Confidence >= 0.45 ? "conf-med" : "conf-low";
                     <tr>
                         <td>@p.Date.ToString("yyyy-MM-dd")</td>
                         <td>@p.League</td>
                         <td>@p.HomeTeam</td>
                         <td>@p.AwayTeam</td>
                         <td><span class="badge @badgeClass">@p.PredictedResult</span></td>
-                        <td>@p.Probability1.ToString("P0")</td>
-                        <td>@p.ProbabilityX.ToString("P0")</td>
-                        <td>@p.Probability2.ToString("P0")</td>
-                        <td><span class="badge @confClass">@p.Confidence.ToString("P0")</span></td>
+                        @if (isBinary)
+                        {
+                            <td>@p.HomeWinProbability.ToString("P0")</td>
+                            <td><span class="badge @confClass">@p.Confidence.ToString("P0")</span></td>
+                        }
+                        else
+                        {
+                            <td>@p.Probability1.ToString("P0")</td>
+                            <td>@p.ProbabilityX.ToString("P0")</td>
+                            <td>@p.Probability2.ToString("P0")</td>
+                            <td><span class="badge @confClass">@p.Confidence.ToString("P0")</span></td>
+                        }
                         <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="@p.Comment">@p.Comment</td>
                     </tr>
                 }

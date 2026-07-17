@@ -1,20 +1,28 @@
 @model FootballPrediction.Web.Models.PredictionResultViewModel
 @{
     ViewData["Title"] = "Prediction Result";
-    string badgeClass = Model.PredictedResult switch { "1" => "badge-1", "X" => "badge-X", "2" => "badge-2", _ => "" };
-    string verdict    = Model.PredictedResult switch { "1" => "Home Win", "X" => "Draw", "2" => "Away Win", _ => "" };
-    string confClass  = Model.Confidence >= 0.6 ? "conf-high" : Model.Confidence >= 0.45 ? "conf-med" : "conf-low";
+    bool isBinary = Model.Mode == "Binary";
+    string badgeClass = isBinary
+        ? (Model.PredictedResult == "HOME" ? "badge-1" : Model.PredictedResult == "AWAY" ? "badge-2" : "badge-X")
+        : (Model.PredictedResult switch { "1" => "badge-1", "X" => "badge-X", "2" => "badge-2", _ => "" });
+    string verdict = isBinary
+        ? (Model.PredictedResult == "HOME" ? "Home Win" : Model.PredictedResult == "AWAY" ? "Away Win" : "Skip")
+        : (Model.PredictedResult switch { "1" => "Home Win", "X" => "Draw", "2" => "Away Win", _ => "" });
+    string confClass = Model.Confidence >= 0.6 ? "conf-high" : Model.Confidence >= 0.45 ? "conf-med" : "conf-low";
     int confPct = (int)(Model.Confidence * 100);
 }
 
-<div class="page-title">Prediction Result</div>
+<div class="page-title">
+    @(isBinary ? "Binary Prediction" : "Prediction Result (1X2)")
+    @if (!isBinary) { <span class="badge badge-X" style="font-size:11px;margin-left:12px">Experimental</span> }
+</div>
 
 <div class="row-2">
     <div class="result-hero">
         <h3>@Model.HomeTeam vs @Model.AwayTeam</h3>
         <p class="sub">@Model.League &middot; @Model.Date.ToString("dd MMM yyyy")</p>
         <div class="result-badge">
-            <span class="badge badge-xl @badgeClass">@Model.PredictedResult</span>
+            <span class="badge badge-xl @badgeClass">@(isBinary ? (Model.PredictedResult == "HOME" ? "H" : Model.PredictedResult == "AWAY" ? "A" : "—") : Model.PredictedResult)</span>
         </div>
         <div class="result-verdict">@verdict</div>
         <div class="result-comment">@Model.Comment</div>
@@ -35,29 +43,50 @@
     <div class="card">
         <div class="card-header">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
-            Probability Breakdown
+            @(isBinary ? "Probability Breakdown" : "Probability Breakdown")
         </div>
-        <div class="prob-group">
-            <div class="prob-label">
-                <span>🏠 Home Win</span>
-                <strong style="color:var(--green)">@Model.Probability1.ToString("P1")</strong>
+
+        @if (isBinary)
+        {
+            <div class="prob-group">
+                <div class="prob-label">
+                    <span>🏠 Home Win</span>
+                    <strong style="color:var(--green)">@Model.HomeWinProbability.ToString("P1")</strong>
+                </div>
+                <div class="prob-bar"><div class="prob-fill prob-green" style="width:@(Model.HomeWinProbability*100)%"></div></div>
             </div>
-            <div class="prob-bar"><div class="prob-fill prob-green" style="width:@(Model.Probability1*100)%"></div></div>
-        </div>
-        <div class="prob-group">
-            <div class="prob-label">
-                <span>🤝 Draw</span>
-                <strong style="color:var(--yellow)">@Model.ProbabilityX.ToString("P1")</strong>
+            <div class="prob-group" style="margin-bottom:0">
+                <div class="prob-label">
+                    <span>✈️ Away Win</span>
+                    <strong style="color:var(--blue)">@Model.AwayWinProbability.ToString("P1")</strong>
+                </div>
+                <div class="prob-bar"><div class="prob-fill prob-blue" style="width:@(Model.AwayWinProbability*100)%"></div></div>
             </div>
-            <div class="prob-bar"><div class="prob-fill prob-yellow" style="width:@(Model.ProbabilityX*100)%"></div></div>
-        </div>
-        <div class="prob-group" style="margin-bottom:0">
-            <div class="prob-label">
-                <span>✈️ Away Win</span>
-                <strong style="color:var(--blue)">@Model.Probability2.ToString("P1")</strong>
+        }
+        else
+        {
+            <div class="prob-group">
+                <div class="prob-label">
+                    <span>🏠 Home Win</span>
+                    <strong style="color:var(--green)">@Model.Probability1.ToString("P1")</strong>
+                </div>
+                <div class="prob-bar"><div class="prob-fill prob-green" style="width:@(Model.Probability1*100)%"></div></div>
             </div>
-            <div class="prob-bar"><div class="prob-fill prob-blue" style="width:@(Model.Probability2*100)%"></div></div>
-        </div>
+            <div class="prob-group">
+                <div class="prob-label">
+                    <span>🤝 Draw</span>
+                    <strong style="color:var(--yellow)">@Model.ProbabilityX.ToString("P1")</strong>
+                </div>
+                <div class="prob-bar"><div class="prob-fill prob-yellow" style="width:@(Model.ProbabilityX*100)%"></div></div>
+            </div>
+            <div class="prob-group" style="margin-bottom:0">
+                <div class="prob-label">
+                    <span>✈️ Away Win</span>
+                    <strong style="color:var(--blue)">@Model.Probability2.ToString("P1")</strong>
+                </div>
+                <div class="prob-bar"><div class="prob-fill prob-blue" style="width:@(Model.Probability2*100)%"></div></div>
+            </div>
+        }
     </div>
 </div>
 

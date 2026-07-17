@@ -1,0 +1,34 @@
+# Build artifacts
+**/bin/
+**/obj/
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.suo
+*.user
+
+# Tests (exclus du build Docker)
+tests/
+
+# Docs lourds
+documentation/*.docx
+documentation/*.xlsx
+documentation/~$*
+
+# Packages
+packages/
+*.nupkg
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets
+*.env
+appsettings.*.local.json

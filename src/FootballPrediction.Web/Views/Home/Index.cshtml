@@ -1,9 +1,10 @@
 @{
     ViewData["Title"] = "Dashboard";
+    string modelMode = ViewData["ModelMode"] as string ?? "Binary";
 }
 
 <div class="page-title">Dashboard</div>
-<div class="page-subtitle">Football prediction system — 14 211 matches, 4 leagues, 2015–2025</div>
+<div class="page-subtitle">Football prediction system — Binary mode (Home/Away) &middot; 71.4% accuracy</div>
 
 <div class="kpi-grid">
     <div class="kpi-card kpi-blue">
@@ -17,10 +18,22 @@
         <div class="kpi-sub">4 multiclass + 4 binary classifiers</div>
     </div>
     <div class="kpi-card kpi-green">
-        <div class="kpi-header">🎯 Binary Accuracy</div>
-        <div class="kpi-value">71.4%</div>
-        <div class="kpi-sub">LbfgsLogisticRegression · F1 0.78 · AUC 0.78</div>
-        <div class="kpi-delta" style="color:var(--green)">↑ +18 pts vs multiclass (53%)</div>
+        <div class="kpi-header">🎯 Active Model</div>
+        <div class="kpi-value" style="font-size:22px">@(modelMode == "Binary" ? "Binary" : "Multiclass")</div>
+        <div class="kpi-sub">
+            @if (modelMode == "Binary")
+            {
+                <span>LbfgsLogisticRegression &middot; Accuracy <strong>71.4%</strong> &middot; F1 0.78 &middot; AUC 0.78</span>
+            }
+            else
+            {
+                <span>LbfgsMaximumEntropy &middot; Accuracy <strong>53.0%</strong> (experimental)</span>
+            }
+        </div>
+        @if (modelMode == "Binary")
+        {
+            <div class="kpi-delta" style="color:var(--green)">↑ +18 pts vs multiclass (53%)</div>
+        }
     </div>
     <div class="kpi-card kpi-yellow">
         <div class="kpi-header">⚽ Leagues</div>
@@ -41,13 +54,17 @@
 
 <div class="alert alert-warning">
     ⚠️ This tool is experimental. Predictions do not constitute financial advice.
+    @if (modelMode == "Binary")
+    {
+        <span>Draws are excluded — only Home/Away predictions with confidence threshold.</span>
+    }
 </div>
 
 <div class="row-2">
     <div class="card">
         <div class="card-header">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
-            Model Comparison (Multiclass)
+            Model Comparison (Multiclass — Experimental)
         </div>
         <div class="chart-wrap chart-wrap-md">
             <canvas id="chartMulticlass"></canvas>
@@ -59,7 +76,7 @@
     <div class="card">
         <div class="card-header">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
-            Model Comparison (Binary — no draws)
+            Model Comparison (Binary — Active)
         </div>
         <div class="chart-wrap chart-wrap-md">
             <canvas id="chartBinary"></canvas>
@@ -73,14 +90,14 @@
 <div class="feature-grid">
     <div class="feature-card">
         <div class="feature-icon" style="background:rgba(56,189,248,.15)">🔮</div>
-        <h4>Single Match Prediction</h4>
-        <p>Enter teams, league, and odds to get an instant 1X2 prediction with confidence score.</p>
+        <h4>Binary Prediction</h4>
+        <p>Home/Away with confidence threshold. Skip uncertain matches. F1 0.78, AUC 0.78.</p>
         <a href="/prediction" class="btn btn-blue btn-sm" style="margin-top:12px">New Prediction →</a>
     </div>
     <div class="feature-card">
         <div class="feature-icon" style="background:rgba(34,197,94,.15)">📁</div>
         <h4>Batch CSV Processing</h4>
-        <p>Upload a CSV file with multiple matches and get predictions for all of them at once.</p>
+        <p>Upload a CSV file with multiple matches and get binary predictions for all of them.</p>
         <a href="/batch" class="btn btn-green btn-sm" style="margin-top:12px">Upload CSV →</a>
     </div>
     <div class="feature-card">
@@ -90,15 +107,15 @@
     </div>
     <div class="feature-card">
         <div class="feature-icon" style="background:rgba(250,204,21,.15)">📈</div>
-        <h4>Binary Betting Mode</h4>
-        <p>Home/Away only with confidence threshold. Skip uncertain matches. F1 0.78, AUC 0.78.</p>
+        <h4>API Access</h4>
+        <p>REST endpoints at <code>/api/predict</code> and <code>/api/health</code>. JSON in, JSON out.</p>
+        <a href="/api/health" class="btn btn-outline btn-sm" style="margin-top:12px">Health Check →</a>
     </div>
 </div>
 
 @section Scripts {
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <script>
-// Multiclass chart
 new Chart(document.getElementById('chartMulticlass'), {
     type: 'bar',
     data: {
@@ -120,7 +137,6 @@ new Chart(document.getElementById('chartMulticlass'), {
     }
 });
 
-// Binary chart
 new Chart(document.getElementById('chartBinary'), {
     type: 'bar',
     data: {

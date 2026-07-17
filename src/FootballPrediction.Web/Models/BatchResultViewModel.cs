@@ -6,4 +6,6 @@ public class BatchResultViewModel
     public int TotalMatches { get; set; }
     public int SuccessfulPredictions { get; set; }
     public string? DownloadFileName { get; set; }
+
+    public bool HasDownload => !string.IsNullOrEmpty(DownloadFileName);
 }

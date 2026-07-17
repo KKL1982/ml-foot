@@ -1,12 +1,13 @@
 @model FootballPrediction.Web.Models.PredictionInputViewModel
 @{
-    ViewData["Title"] = "Manual Prediction";
+    ViewData["Title"] = "Binary Prediction";
 }
 
 <div class="page-title">Predict a Match</div>
-<div class="page-subtitle">Enter match details and bookmaker odds for an instant prediction</div>
+<div class="page-subtitle">Binary mode (Home/Away) — 71.4% accuracy &middot; <a href="#" onclick="toggleMode()" style="color:var(--yellow);text-decoration:underline">Switch to experimental 1X2</a></div>
 
 <form asp-action="Predict" method="post" onsubmit="document.getElementById('spinner').classList.add('active')">
+    <input type="hidden" asp-for="Mode" id="modeInput" />
 
     <div class="card">
         <div class="card-header">
@@ -57,7 +58,7 @@
     <div class="card">
         <div class="card-header">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-            Bookmaker Odds (Bet365 & Pinnacle)
+            Bookmaker Odds
         </div>
         <div class="form-grid-3">
             <div class="odds-box">
@@ -90,19 +91,51 @@
                     <input asp-for="PinnacleAway" type="number" step="0.01" class="form-control" placeholder="e.g. 3.90" />
                 </div>
             </div>
-            <div style="display:flex;align-items:center;justify-content:center;color:var(--tx3);font-size:13px;text-align:center;line-height:1.8">
-                <div>
-                    <div style="font-size:40px;margin-bottom:12px">🎯</div>
-                    <strong>Odds improve accuracy</strong><br>
-                    by up to <span style="color:var(--green);font-weight:700">15 percentage points</span><br><br>
-                    <span style="font-size:11px">William Hill odds are available<br>in the CSV dataset but not<br>yet wired to the prediction form.</span>
+            <div class="odds-box">
+                <div class="odds-box-title"><span class="dot" style="background:var(--yellow)"></span> William Hill</div>
+                <div class="odds-row">
+                    <span class="odds-row-label home">1</span>
+                    <input asp-for="WilliamHillHome" type="number" step="0.01" class="form-control" placeholder="e.g. 2.05" />
+                </div>
+                <div class="odds-row">
+                    <span class="odds-row-label draw">X</span>
+                    <input asp-for="WilliamHillDraw" type="number" step="0.01" class="form-control" placeholder="e.g. 3.55" />
+                </div>
+                <div class="odds-row">
+                    <span class="odds-row-label away">2</span>
+                    <input asp-for="WilliamHillAway" type="number" step="0.01" class="form-control" placeholder="e.g. 4.10" />
                 </div>
             </div>
         </div>
 
-        <button type="submit" class="btn btn-green btn-lg" style="width:100%;margin-top:28px">
-            ⚡ Predict Result
+        <div style="margin-top:20px;display:flex;align-items:center;gap:12px">
+            <label asp-for="BinaryThreshold" style="font-size:13px;color:var(--tx2);white-space:nowrap">🎯 Confidence threshold:</label>
+            <input asp-for="BinaryThreshold" type="range" min="0.5" max="0.95" step="0.05" class="form-range" style="flex:1"
+                   oninput="this.nextElementSibling.textContent = (this.value*100).toFixed(0) + '%'" />
+            <span style="font-size:13px;font-weight:700;color:var(--green);min-width:40px">50%</span>
+        </div>
+
+        <button type="submit" class="btn btn-green btn-lg" style="width:100%;margin-top:20px">
+            ⚡ Predict (Binary)
         </button>
     </div>
-
 </form>
+
+<script>
+function toggleMode() {
+    var input = document.getElementById('modeInput');
+    var title = document.querySelector('.page-title');
+    var subtitle = document.querySelector('.page-subtitle');
+    if (input.value === 'Multiclass') {
+        input.value = 'Binary';
+        title.textContent = 'Predict a Match';
+        subtitle.innerHTML = 'Binary mode (Home/Away) — 71.4% accuracy &middot; <a href="#" onclick="toggleMode()" style="color:var(--yellow);text-decoration:underline">Switch to experimental 1X2</a>';
+        document.querySelector('.btn-green').textContent = '⚡ Predict (Binary)';
+    } else {
+        input.value = 'Multiclass';
+        title.textContent = 'Predict a Match (1X2 Experimental)';
+        subtitle.innerHTML = '⚠️ Experimental multiclass mode — 53% accuracy &middot; <a href="#" onclick="toggleMode()" style="color:var(--green);text-decoration:underline">Switch to Binary</a>';
+        document.querySelector('.btn-green').textContent = '⚡ Predict (1X2)';
+    }
+}
+</script>
