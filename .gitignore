@@ -17,7 +17,6 @@ obj/
 ## Ignore macOS
 .DS_Store
 
-## Ignore trained model files
 ## Model files are committed for deployment
 
 ## Identity SQLite database
@@ -25,8 +24,8 @@ obj/
 *.db-shm
 *.db-wal
 
-## Ignore data files
-data/
+## Ignore data files (root only)
+/data/
 *.csv
 !documentation/*.csv
 
