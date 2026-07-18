@@ -7,6 +7,7 @@ services:
     volumes:
       - ./models:/app/models:ro
       - ./data:/app/data:rw
+      - ./appsettings.Production.json:/app/appsettings.Production.json:ro
     environment:
       - ASPNETCORE_URLS=http://+:7575
       - ASPNETCORE_ENVIRONMENT=Production
