@@ -925,4 +925,149 @@ GET /Odds/fetch?league=Premier League&homeTeam=Arsenal&awayTeam=Chelsea
 
 ---
 
+## Gestion des modèles
+
+### Modèles pré-entraînés
+
+4 modèles sont fournis dans `modeles_entraines/` et utilisables immédiatement :
+
+| Fichier | Type | Accuracy |
+|---------|------|----------|
+| `model_binary.zip` | Binaire (1/2) — LbfgsLogisticRegression | 71.4% |
+| `model_lightgbm.zip` | Binaire (1/2) — LightGBM | 70.0% |
+| `model_nn.bin` | Binaire (1/2) — Neural Network (MLP) | 69.4% |
+| `model.zip` | Multiclasse (1/X/2) — LbfgsMaximumEntropy | 53.0% |
+
+Au déploiement, aucun ré-entraînement n'est nécessaire. Le Dockerfile copie `models/` dans l'image et `Program.cs` charge automatiquement le modèle configuré (binaire par défaut). Le modèle est prêt à l'emploi dès le premier `docker compose up`.
+
+### Améliorer le modèle par ré-entraînement
+
+4 algorithmes sont disponibles pour expérimenter :
+
+| Algorithme | Option `--trainer` | Caractéristique |
+|-----------|-------------------|-----------------|
+| SDCA | `sdca` | Rapide, bon compromis |
+| L-BFGS | `lbfgs` | Convergence lente, parfois plus précis |
+| LightGBM | `lightgbm` | Meilleure précision potentielle |
+| Neural Network | `nn` | MLP custom, 21K paramètres |
+
+```bash
+# Ré-entraîner le modèle binaire avec LightGBM
+dotnet run --project src/FootballPrediction.Cli -- train \
+  --input data/nouvelles_donnees.csv \
+  --output models/model_binary.zip \
+  --trainer lightgbm \
+  --binary
+
+# Comparer tous les algorithmes sur le même dataset
+dotnet run --project src/FootballPrediction.Cli -- compare \
+  --input data/matches.csv --binary
+
+# Optimisation des hyperparamètres LightGBM
+dotnet run --project src/FootballPrediction.Cli -- tune \
+  --input data/matches.csv \
+  --output models/model_best.zip
+```
+
+Une fois le nouveau modèle généré dans `models/`, redémarrez le conteneur pour le prendre en compte :
+
+```bash
+docker compose restart
+```
+
+---
+
+## Déploiement sur un VPS
+
+### Transfert des fichiers
+
+Utiliser **WinSCP** ou `scp` en mode **binaire** :
+
+```bash
+# Depuis le poste local
+scp -r models/ modeles_entraines/ docker-compose.yml Dockerfile \
+       NuGet.Config Directory.Build.props \
+       user@vps:/opt/ml-foot/
+
+scp -r src/ user@vps:/opt/ml-foot/
+```
+
+> ⚠️ Dans WinSCP : `Transfer > Transfer Settings > Binary`. Les fichiers `.zip` et `.bin` corrompus en mode texte produisent des erreurs ML.NET silencieuses.
+
+### Démarrage
+
+```bash
+ssh user@vps
+cd /opt/ml-foot
+docker compose up -d --build
+```
+
+### Configuration de la clé API sur le VPS
+
+```bash
+# Créer appsettings.Production.json avec la clé
+echo '{"OddsApi":{"ApiKey":"votre-clé-api"}}' > appsettings.Production.json
+docker compose restart
+```
+
+### Vérification
+
+```bash
+# L'app est accessible sur le port 7575
+curl http://localhost:7575/
+# → 302 (redirection vers /Account/Login) = OK
+
+# Login
+curl -X POST http://localhost:7575/Account/Login \
+  -d "Email=admin@football-prediction.local&Password=Admin123!" \
+  -c cookies.txt -L
+
+# Test live odds
+curl -b cookies.txt \
+  "http://localhost:7575/Odds/fetch?league=Premier+League&homeTeam=Arsenal&awayTeam=Chelsea"
+```
+
+### Exposition publique (nginx)
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name prediction.monsite.com;
+
+    ssl_certificate     /etc/letsencrypt/live/prediction.monsite.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/prediction.monsite.com/privkey.pem;
+
+    location / {
+        proxy_pass http://localhost:7575;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+---
+
+## Résolution des erreurs courantes
+
+### « Unexpected end of JSON input »
+
+Cette erreur apparaît dans le navigateur en cliquant sur **Fetch Live Odds**. Causes et solutions :
+
+| Cause | Solution |
+|-------|----------|
+| Clé API non configurée | Ajouter `OddsApi:ApiKey` dans `appsettings.json` |
+| API injoignable | Vérifier la connectivité réseau du conteneur |
+| Session expirée | Rafraîchir la page et se reconnecter |
+| Conteneur crashé | `docker compose logs web` |
+
+Le frontend affiche maintenant un message explicite au lieu de planter.
+
+### « HTTP 404 on /Odds/fetch »
+
+Vérifier que le contrôleur a `[Route("[controller]")]` (corrigé dans la v1.1).
+
+---
+
 *Documentation générée le 18 juillet 2026 — FootballPrediction v1.1*

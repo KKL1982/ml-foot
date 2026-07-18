@@ -5,14 +5,13 @@ FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
 # Restore dependencies (layer caching: only re-restore when csproj/sln change)
-COPY FootballPrediction.sln ./
-COPY Directory.Build.props ./
 COPY NuGet.Config ./
+COPY Directory.Build.props ./
 COPY src/FootballPrediction.Domain/FootballPrediction.Domain.csproj src/FootballPrediction.Domain/
 COPY src/FootballPrediction.Application/FootballPrediction.Application.csproj src/FootballPrediction.Application/
 COPY src/FootballPrediction.ML/FootballPrediction.ML.csproj src/FootballPrediction.ML/
 COPY src/FootballPrediction.Web/FootballPrediction.Web.csproj src/FootballPrediction.Web/
-RUN dotnet restore FootballPrediction.sln
+RUN dotnet restore src/FootballPrediction.Web/FootballPrediction.Web.csproj
 
 # Copy sources and publish
 COPY src/ src/

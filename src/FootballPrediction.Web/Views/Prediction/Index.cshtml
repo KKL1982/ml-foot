@@ -169,12 +169,25 @@ async function fetchLiveOdds() {
                   '&awayTeam=' + encodeURIComponent(awayTeam);
 
         var resp = await fetch(url);
-        if (!resp.ok) {
-            var err = await resp.json();
-            throw new Error(err.error || 'Unknown error');
-        }
 
-        var data = await resp.json();
+        // Attempt to parse JSON regardless of status code
+        var data;
+        try {
+            var text = await resp.text();
+            if (!text || text.trim().length === 0) {
+                throw new Error('Server returned empty response. Check if the container is running.');
+            }
+            data = JSON.parse(text);
+        } catch (jsonErr) {
+            // Response is not JSON (HTML error page, redirect, etc.)
+            if (resp.status === 302 || resp.status === 401 || resp.status === 403) {
+                throw new Error('Session expired. Please refresh and log in again.');
+            }
+            if (resp.status >= 500) {
+                throw new Error('Server error (HTTP ' + resp.status + '). Check Docker logs.');
+            }
+            throw new Error('Unexpected response from server (HTTP ' + resp.status + '). Try again later.');
+        }
 
         if (data.error) {
             showStatus('⚠️ ' + data.error, 'warning');

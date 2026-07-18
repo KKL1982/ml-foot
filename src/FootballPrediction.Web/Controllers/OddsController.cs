@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace FootballPrediction.Web.Controllers;
 
 [Authorize]
+[Route("[controller]")]
 public class OddsController : Controller
 {
     private readonly IOddsFetcherService _oddsFetcher;
@@ -17,19 +18,17 @@ public class OddsController : Controller
     }
 
     /// <summary>
-    /// AJAX endpoint: GET /Odds/Fetch?league=...&homeTeam=...&awayTeam=...
-    /// Returns FetchedOdds as JSON.
+    /// AJAX endpoint: GET /Odds/fetch?league=...&homeTeam=...&awayTeam=...
     /// </summary>
     [HttpGet("fetch")]
     public async Task<IActionResult> Fetch(string league, string homeTeam, string awayTeam)
     {
         if (string.IsNullOrWhiteSpace(league) || string.IsNullOrWhiteSpace(homeTeam) || string.IsNullOrWhiteSpace(awayTeam))
+        {
             return BadRequest(new { error = "league, homeTeam, and awayTeam are required." });
+        }
 
         var result = await _oddsFetcher.FetchOddsAsync(league, homeTeam, awayTeam);
-        if (result == null)
-            return NotFound(new { error = "No odds found for this match." });
-
-        return Json(result);
+        return Ok(result);
     }
 }

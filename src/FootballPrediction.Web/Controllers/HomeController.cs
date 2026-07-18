@@ -1,9 +1,11 @@
 using FootballPrediction.Web.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 
 namespace FootballPrediction.Web.Controllers;
 
+[Authorize]
 public class HomeController : Controller
 {
     private readonly ModelSettings _settings;
