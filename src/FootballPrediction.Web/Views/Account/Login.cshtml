@@ -1,6 +1,7 @@
 @model FootballPrediction.Web.Models.LoginViewModel
 @{
     ViewData["Title"] = "Login";
+    var env = Context.RequestServices.GetRequiredService<Microsoft.AspNetCore.Hosting.IWebHostEnvironment>();
 }
 
 <div class="page-title">Sign In</div>
@@ -19,11 +20,12 @@
         <div asp-validation-summary="All" style="color:var(--red);font-size:12px;margin-bottom:16px"></div>
 
         <form asp-action="Login" method="post">
+            @Html.AntiForgeryToken()
             <input type="hidden" asp-for="ReturnUrl" />
 
             <div class="form-group" style="margin-bottom:16px">
                 <label asp-for="Email" class="form-label">📧 Email</label>
-                <input asp-for="Email" class="form-control" placeholder="admin@football-prediction.local" autofocus />
+                <input asp-for="Email" class="form-control" placeholder="your@email.com" autofocus />
                 <span asp-validation-for="Email" class="field-validation-error"></span>
             </div>
 
@@ -44,7 +46,10 @@
         </form>
     </div>
 
-    <p style="text-align:center;margin-top:16px;font-size:12px;color:var(--tx3)">
-        Default admin: <code style="color:var(--tx2)">admin@football-prediction.local</code> / <code style="color:var(--tx2)">Admin123!</code>
-    </p>
+    @if (!env.IsProduction())
+    {
+        <p style="text-align:center;margin-top:16px;font-size:12px;color:var(--tx3)">
+            💡 Dev hint — admin: <code style="color:var(--tx2)">admin@football-prediction.local</code> / <code style="color:var(--tx2)">Admin123!</code>
+        </p>
+    }
 </div>

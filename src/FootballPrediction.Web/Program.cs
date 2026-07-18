@@ -5,11 +5,12 @@ using FootballPrediction.Web.Models;
 using FootballPrediction.Web.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllersWithViews();
-builder.Services.AddControllers(); // API controllers
+builder.Services.AddControllers();
 
 // ── Identity + SQLite ──
 builder.Services.AddDbContext<AppDbContext>(options =>
@@ -41,11 +42,13 @@ builder.Services.Configure<ModelSettings>(
     builder.Configuration.GetSection(ModelSettings.SectionName));
 builder.Services.Configure<OddsApiOptions>(
     builder.Configuration.GetSection(OddsApiOptions.SectionName));
+builder.Services.Configure<AdminSeedOptions>(
+    builder.Configuration.GetSection(AdminSeedOptions.SectionName));
 
 // Services
 builder.Services.AddSingleton(sp =>
 {
-    var settings = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<ModelSettings>>().Value;
+    var settings = sp.GetRequiredService<IOptions<ModelSettings>>().Value;
     var predictor = new MatchPredictor();
     var modelPath = Path.Combine(Directory.GetCurrentDirectory(), settings.BinaryModelPath);
     if (File.Exists(modelPath))
@@ -71,8 +74,9 @@ using (var scope = app.Services.CreateScope())
     var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    var seedOpts = scope.ServiceProvider.GetRequiredService<IOptions<AdminSeedOptions>>().Value;
     db.Database.EnsureCreated();
-    await SeedAdminAsync(userManager, roleManager);
+    await SeedAdminAsync(userManager, roleManager, seedOpts);
 }
 
 app.UseStaticFiles();
@@ -85,27 +89,28 @@ app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
-app.MapControllers(); // API attribute routing
+app.MapControllers();
 
 app.Run();
 
-// ── Seed ──
-static async Task SeedAdminAsync(UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager)
+static async Task SeedAdminAsync(
+    UserManager<ApplicationUser> userManager,
+    RoleManager<IdentityRole> roleManager,
+    AdminSeedOptions opts)
 {
     if (!await roleManager.RoleExistsAsync("Admin"))
         await roleManager.CreateAsync(new IdentityRole("Admin"));
 
-    var adminEmail = "admin@football-prediction.local";
-    var adminUser = await userManager.FindByEmailAsync(adminEmail);
+    var adminUser = await userManager.FindByEmailAsync(opts.Email);
     if (adminUser == null)
     {
         adminUser = new ApplicationUser
         {
-            UserName = adminEmail,
-            Email = adminEmail,
+            UserName = opts.Email,
+            Email = opts.Email,
             EmailConfirmed = true
         };
-        var result = await userManager.CreateAsync(adminUser, "Admin123!");
+        var result = await userManager.CreateAsync(adminUser, opts.Password);
         if (result.Succeeded)
             await userManager.AddToRoleAsync(adminUser, "Admin");
     }
