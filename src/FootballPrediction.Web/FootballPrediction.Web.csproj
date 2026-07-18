@@ -10,4 +10,8 @@
     <ProjectReference Include="..\FootballPrediction.Application\FootballPrediction.Application.csproj" />
     <ProjectReference Include="..\FootballPrediction.ML\FootballPrediction.ML.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.*" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.*" />
+  </ItemGroup>
 </Project>

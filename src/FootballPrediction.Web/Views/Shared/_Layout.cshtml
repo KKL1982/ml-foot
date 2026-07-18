@@ -34,7 +34,20 @@
                 CSV Upload
             </a>
         </nav>
-        <div class="sidebar-footer">&copy; @DateTime.Now.Year Football AI</div>
+        <div class="sidebar-footer">
+            @if (User.Identity?.IsAuthenticated == true)
+            {
+                <span style="font-size:11px;color:var(--tx3);display:block;margin-bottom:6px">👤 @User.Identity.Name</span>
+                <form asp-controller="Account" asp-action="Logout" method="post" style="margin:0">
+                    <button type="submit" class="btn btn-outline btn-sm" style="width:100%;font-size:11px">🚪 Sign Out</button>
+                </form>
+            }
+            else
+            {
+                <a href="/Account/Login" class="btn btn-outline btn-sm" style="width:100%">🔑 Sign In</a>
+            }
+            <div style="margin-top:8px">&copy; @DateTime.Now.Year Football AI</div>
+        </div>
     </aside>
 
     <!-- Header -->

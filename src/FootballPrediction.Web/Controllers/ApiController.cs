@@ -1,6 +1,7 @@
 using FootballPrediction.Application.DTOs;
 using FootballPrediction.Application.Interfaces;
 using FootballPrediction.Web.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 
@@ -8,6 +9,7 @@ namespace FootballPrediction.Web.Controllers;
 
 [ApiController]
 [Route("[controller]")]
+[Authorize]
 public class ApiController : ControllerBase
 {
     private readonly IPredictionService _predictionService;
@@ -24,7 +26,6 @@ public class ApiController : ControllerBase
         _logger = logger;
     }
 
-    /// <summary>Binary prediction — returns HomeWinProbability, Confidence, Bet (HOME/AWAY/SKIP).</summary>
     [HttpPost("predict")]
     public ActionResult<BinaryPredictionOutputDto> PredictBinary([FromBody] PredictionInputViewModel model)
     {
@@ -52,7 +53,6 @@ public class ApiController : ControllerBase
         return Ok(result);
     }
 
-    /// <summary>Multiclass prediction — returns 1/X/2 with three probabilities.</summary>
     [HttpPost("predict/multiclass")]
     public ActionResult<PredictionOutputDto> PredictMulticlass([FromBody] PredictionInputViewModel model)
     {
@@ -80,7 +80,6 @@ public class ApiController : ControllerBase
         return Ok(result);
     }
 
-    /// <summary>Health check — returns model status and mode.</summary>
     [HttpGet("health")]
     public ActionResult Health()
     {

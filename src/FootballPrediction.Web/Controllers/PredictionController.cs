@@ -1,11 +1,13 @@
 using FootballPrediction.Application.DTOs;
 using FootballPrediction.Application.Interfaces;
 using FootballPrediction.Web.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 
 namespace FootballPrediction.Web.Controllers;
 
+[Authorize]
 public class PredictionController : Controller
 {
     private readonly IPredictionService _predictionService;

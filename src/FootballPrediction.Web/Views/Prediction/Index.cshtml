@@ -24,7 +24,7 @@
             </div>
             <div class="form-group">
                 <label asp-for="League" class="form-label">🏆 League</label>
-                <select asp-for="League" class="form-select">
+                <select asp-for="League" class="form-select" id="LeagueSelect">
                     <option value="">-- Select League --</option>
                     <option>Premier League</option>
                     <option>LaLiga</option>
@@ -36,12 +36,12 @@
             </div>
             <div class="form-group">
                 <label asp-for="HomeTeam" class="form-label">🏠 Home Team</label>
-                <input asp-for="HomeTeam" class="form-control" placeholder="e.g. Arsenal" />
+                <input asp-for="HomeTeam" class="form-control" id="HomeTeamInput" placeholder="e.g. Arsenal" />
                 <span asp-validation-for="HomeTeam" class="field-validation-error"></span>
             </div>
             <div class="form-group">
                 <label asp-for="AwayTeam" class="form-label">✈️ Away Team</label>
-                <input asp-for="AwayTeam" class="form-control" placeholder="e.g. Chelsea" />
+                <input asp-for="AwayTeam" class="form-control" id="AwayTeamInput" placeholder="e.g. Chelsea" />
                 <span asp-validation-for="AwayTeam" class="field-validation-error"></span>
             </div>
             <div class="form-group">
@@ -59,51 +59,55 @@
         <div class="card-header">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
             Bookmaker Odds
+            <button type="button" class="btn btn-blue btn-sm" style="margin-left:auto" onclick="fetchLiveOdds()" id="fetchBtn">
+                🔄 Fetch Live Odds
+            </button>
         </div>
+        <div id="fetchStatus" style="display:none;margin-bottom:12px;padding:8px 12px;border-radius:8px;font-size:12px"></div>
         <div class="form-grid-3">
             <div class="odds-box">
                 <div class="odds-box-title"><span class="dot dot-bet365"></span> Bet365</div>
                 <div class="odds-row">
                     <span class="odds-row-label home">1</span>
-                    <input asp-for="Bet365Home" type="number" step="0.01" class="form-control" placeholder="e.g. 2.10" />
+                    <input asp-for="Bet365Home" type="number" step="0.01" class="form-control odds-input" placeholder="e.g. 2.10" />
                 </div>
                 <div class="odds-row">
                     <span class="odds-row-label draw">X</span>
-                    <input asp-for="Bet365Draw" type="number" step="0.01" class="form-control" placeholder="e.g. 3.50" />
+                    <input asp-for="Bet365Draw" type="number" step="0.01" class="form-control odds-input" placeholder="e.g. 3.50" />
                 </div>
                 <div class="odds-row">
                     <span class="odds-row-label away">2</span>
-                    <input asp-for="Bet365Away" type="number" step="0.01" class="form-control" placeholder="e.g. 4.00" />
+                    <input asp-for="Bet365Away" type="number" step="0.01" class="form-control odds-input" placeholder="e.g. 4.00" />
                 </div>
             </div>
             <div class="odds-box">
                 <div class="odds-box-title"><span class="dot dot-pinnacle"></span> Pinnacle</div>
                 <div class="odds-row">
                     <span class="odds-row-label home">1</span>
-                    <input asp-for="PinnacleHome" type="number" step="0.01" class="form-control" placeholder="e.g. 2.15" />
+                    <input asp-for="PinnacleHome" type="number" step="0.01" class="form-control odds-input" placeholder="e.g. 2.15" />
                 </div>
                 <div class="odds-row">
                     <span class="odds-row-label draw">X</span>
-                    <input asp-for="PinnacleDraw" type="number" step="0.01" class="form-control" placeholder="e.g. 3.40" />
+                    <input asp-for="PinnacleDraw" type="number" step="0.01" class="form-control odds-input" placeholder="e.g. 3.40" />
                 </div>
                 <div class="odds-row">
                     <span class="odds-row-label away">2</span>
-                    <input asp-for="PinnacleAway" type="number" step="0.01" class="form-control" placeholder="e.g. 3.90" />
+                    <input asp-for="PinnacleAway" type="number" step="0.01" class="form-control odds-input" placeholder="e.g. 3.90" />
                 </div>
             </div>
             <div class="odds-box">
                 <div class="odds-box-title"><span class="dot" style="background:var(--yellow)"></span> William Hill</div>
                 <div class="odds-row">
                     <span class="odds-row-label home">1</span>
-                    <input asp-for="WilliamHillHome" type="number" step="0.01" class="form-control" placeholder="e.g. 2.05" />
+                    <input asp-for="WilliamHillHome" type="number" step="0.01" class="form-control odds-input" placeholder="e.g. 2.05" />
                 </div>
                 <div class="odds-row">
                     <span class="odds-row-label draw">X</span>
-                    <input asp-for="WilliamHillDraw" type="number" step="0.01" class="form-control" placeholder="e.g. 3.55" />
+                    <input asp-for="WilliamHillDraw" type="number" step="0.01" class="form-control odds-input" placeholder="e.g. 3.55" />
                 </div>
                 <div class="odds-row">
                     <span class="odds-row-label away">2</span>
-                    <input asp-for="WilliamHillAway" type="number" step="0.01" class="form-control" placeholder="e.g. 4.10" />
+                    <input asp-for="WilliamHillAway" type="number" step="0.01" class="form-control odds-input" placeholder="e.g. 4.10" />
                 </div>
             </div>
         </div>
@@ -136,6 +140,81 @@ function toggleMode() {
         title.textContent = 'Predict a Match (1X2 Experimental)';
         subtitle.innerHTML = '⚠️ Experimental multiclass mode — 53% accuracy &middot; <a href="#" onclick="toggleMode()" style="color:var(--green);text-decoration:underline">Switch to Binary</a>';
         document.querySelector('.btn-green').textContent = '⚡ Predict (1X2)';
+    }
+}
+
+// ── Fetch Live Odds ──
+async function fetchLiveOdds() {
+    var league = document.getElementById('LeagueSelect').value;
+    var homeTeam = document.getElementById('HomeTeamInput').value.trim();
+    var awayTeam = document.getElementById('AwayTeamInput').value.trim();
+    var btn = document.getElementById('fetchBtn');
+    var status = document.getElementById('fetchStatus');
+
+    if (!league || !homeTeam || !awayTeam) {
+        showStatus('⚠️ Please select a league and enter both team names first.', 'warning');
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '⏳ Fetching...';
+    status.style.display = 'block';
+    status.style.background = 'rgba(92,200,255,.1)';
+    status.style.color = 'var(--blue)';
+    status.textContent = 'Fetching live odds...';
+
+    try {
+        var url = '/Odds/fetch?league=' + encodeURIComponent(league) +
+                  '&homeTeam=' + encodeURIComponent(homeTeam) +
+                  '&awayTeam=' + encodeURIComponent(awayTeam);
+
+        var resp = await fetch(url);
+        if (!resp.ok) {
+            var err = await resp.json();
+            throw new Error(err.error || 'Unknown error');
+        }
+
+        var data = await resp.json();
+
+        if (data.error) {
+            showStatus('⚠️ ' + data.error, 'warning');
+            btn.disabled = false;
+            btn.innerHTML = '🔄 Fetch Live Odds';
+            return;
+        }
+
+        // Fill Bet365 odds
+        if (data.bet365Home) document.querySelector('[name="Bet365Home"]').value = data.bet365Home;
+        if (data.bet365Draw) document.querySelector('[name="Bet365Draw"]').value = data.bet365Draw;
+        if (data.bet365Away) document.querySelector('[name="Bet365Away"]').value = data.bet365Away;
+
+        // Fill Pinnacle odds
+        if (data.pinnacleHome) document.querySelector('[name="PinnacleHome"]').value = data.pinnacleHome;
+        if (data.pinnacleDraw) document.querySelector('[name="PinnacleDraw"]').value = data.pinnacleDraw;
+        if (data.pinnacleAway) document.querySelector('[name="PinnacleAway"]').value = data.pinnacleAway;
+
+        showStatus('✅ Odds loaded from ' + data.league + ' — ' + data.matchDate, 'success');
+    } catch (e) {
+        showStatus('❌ ' + e.message, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '🔄 Fetch Live Odds';
+    }
+}
+
+function showStatus(msg, type) {
+    var status = document.getElementById('fetchStatus');
+    status.style.display = 'block';
+    status.textContent = msg;
+    if (type === 'success') {
+        status.style.background = 'rgba(45,212,122,.12)';
+        status.style.color = 'var(--green)';
+    } else if (type === 'error') {
+        status.style.background = 'rgba(255,107,107,.12)';
+        status.style.color = 'var(--red)';
+    } else {
+        status.style.background = 'rgba(244,197,66,.12)';
+        status.style.color = 'var(--yellow)';
     }
 }
 </script>

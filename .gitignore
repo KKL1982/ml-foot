@@ -20,6 +20,11 @@ obj/
 ## Ignore trained model files
 models/*.zip
 
+## Identity SQLite database
+*.db
+*.db-shm
+*.db-wal
+
 ## Ignore data files
 data/
 *.csv

@@ -838,4 +838,91 @@ dotnet test FootballPrediction.sln
 
 ---
 
-*Documentation générée le 18 juillet 2026 — FootballPrediction v1.0*
+## Authentification
+
+### Compte admin par défaut
+
+Au premier démarrage, un compte administrateur est créé automatiquement :
+
+- **Email** : `admin@football-prediction.local`
+- **Mot de passe** : `Admin123!`
+
+> ⚠️ Changez ce mot de passe après la première connexion.
+
+### Base de données Identity
+
+L'authentification utilise **ASP.NET Core Identity** avec **SQLite** (fichier `app.db` généré automatiquement).
+
+```bash
+# Sauvegarder la base utilisateurs
+cp app.db app.db.backup
+
+# Réinitialiser (supprime tous les utilisateurs)
+rm app.db app.db-shm app.db-wal
+# Redémarrer l'application → le seed admin sera recréé
+```
+
+Politique de mot de passe (configurable dans `Program.cs`) :
+- 8 caractères minimum
+- 1 majuscule, 1 minuscule, 1 chiffre requis
+- Verrouillage après 5 tentatives échouées (15 minutes)
+
+---
+
+## Live Odds (Récupération des cotes en ligne)
+
+La fonctionnalité utilise **The Odds API** pour récupérer les cotes Bet365 et Pinnacle en temps réel.
+
+### Inscription et clé API
+
+1. S'inscrire sur [the-odds-api.com](https://the-odds-api.com)
+2. Récupérer la clé API (free tier : 500 requêtes/mois)
+3. Configurer la clé :
+
+```bash
+# Option 1 : Variable d'environnement (recommandé en production)
+export OddsApi__ApiKey="votre-clé-api"
+
+# Option 2 : appsettings.Production.json
+{
+  "OddsApi": {
+    "ApiKey": "votre-clé-api",
+    "Region": "eu",
+    "CacheMinutes": 5
+  }
+}
+
+# Option 3 : User Secrets (développement uniquement)
+dotnet user-secrets set "OddsApi:ApiKey" "votre-clé-api"
+```
+
+### Ligues supportées
+
+| Ligue | Sport Key API |
+|-------|--------------|
+| Premier League | `soccer_epl` |
+| LaLiga | `soccer_spain_la_liga` |
+| Bundesliga | `soccer_germany_bundesliga` |
+| Ligue 1 | `soccer_france_ligue_one` |
+| Serie A | `soccer_italy_serie_a` |
+
+### Cache
+
+Les résultats sont mis en cache **5 minutes** (configurable via `CacheMinutes`) pour respecter le rate limit de l'API (500 req/mois en free tier).
+
+### Fallback
+
+Si l'API est indisponible ou la clé non configurée :
+- Un message d'erreur s'affiche dans l'interface
+- La saisie manuelle des cotes reste toujours disponible
+
+### Endpoint AJAX
+
+```
+GET /Odds/fetch?league=Premier League&homeTeam=Arsenal&awayTeam=Chelsea
+→ JSON : Bet365Home, Bet365Draw, Bet365Away, PinnacleHome, PinnacleDraw, PinnacleAway
+```
+
+---
+
+*Documentation générée le 18 juillet 2026 — FootballPrediction v1.1*

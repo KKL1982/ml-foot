@@ -2,12 +2,14 @@ using FootballPrediction.Application.DTOs;
 using FootballPrediction.Application.Interfaces;
 using FootballPrediction.ML.FeatureEngineering;
 using FootballPrediction.Web.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using System.Text;
 
 namespace FootballPrediction.Web.Controllers;
 
+[Authorize]
 public class BatchController : Controller
 {
     private readonly IPredictionService _predictionService;
@@ -54,7 +56,6 @@ public class BatchController : Controller
             var matches = await _csvParser.ParseMatchesAsync(tempPath);
             var features = FeatureEngineer.BuildFeatures(matches);
 
-            // Build PredictionInputDto list from features
             var inputs = features.Select(f => new PredictionInputDto
             {
                 Date = DateTime.Today,
@@ -69,10 +70,8 @@ public class BatchController : Controller
                 PinnacleAway = f.PinnacleAwayProb > 0 ? 1.0 / f.PinnacleAwayProb : null
             }).ToList();
 
-            // Binary predictions (default)
             var binaryPreds = _predictionService.PredictBatchBinary(inputs);
 
-            // Build CSV for download
             var csv = new StringBuilder();
             csv.AppendLine("Date,League,HomeTeam,AwayTeam,Bet,HomeWinProbability,Confidence,Comment");
             var viewModels = new List<PredictionResultViewModel>();
