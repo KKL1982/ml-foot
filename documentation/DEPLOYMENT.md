@@ -847,7 +847,18 @@ Au premier démarrage, un compte administrateur est créé automatiquement :
 - **Email** : `admin@football-prediction.local`
 - **Mot de passe** : `Admin123!`
 
-> ⚠️ Changez ce mot de passe après la première connexion.
+Le seed est configurable dans `appsettings.json` et surchargeable en production :
+
+```json
+// appsettings.Production.json (VPS)
+{"AdminSeed":{"Email":"votre@email.com","Password":"VotreMdpComplexe!"}}
+```
+
+Le seed ne s'exécute que si l'utilisateur n'existe pas déjà.
+
+### Dev hint masqué en production
+
+La page de login affiche les credentials par défaut **uniquement en développement** (`ASPNETCORE_ENVIRONMENT=Development`). En production (`docker-compose.yml` + `Dockerfile`), le hint est invisible.
 
 ### Base de données Identity
 
