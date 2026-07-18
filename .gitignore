@@ -18,7 +18,7 @@ obj/
 .DS_Store
 
 ## Ignore trained model files
-models/*.zip
+## Model files are committed for deployment
 
 ## Identity SQLite database
 *.db
