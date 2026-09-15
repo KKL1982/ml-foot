@@ -44,7 +44,7 @@ public class CsvParserService : ICsvParser
             AwayCoach = row.AwayCoach
         };
 
-        if (DateTime.TryParse(row.Date, out var date))
+        if (TryParseMatchDate(row.Date, out var date))
             match.Date = date;
 
         if (int.TryParse(row.HomeGoals, out var hg))
@@ -65,6 +65,37 @@ public class CsvParserService : ICsvParser
         "2" or "A" => MatchResult.AwayWin,
         _ => null
     };
+
+    /// <summary>
+    /// Parse une date de match en acceptant plusieurs formats :
+    /// ISO (yyyy-MM-dd), français (dd/MM/yyyy), français avec heure, ou ISO complet.
+    /// Le format français est privilégié (celui du CSV de référence).
+    /// </summary>
+    private static bool TryParseMatchDate(string? value, out DateTime date)
+    {
+        date = default;
+        if (string.IsNullOrWhiteSpace(value))
+            return false;
+
+        var s = value.Trim();
+
+        // Formats avec séparateur '/': on force la lecture en jour/mois/année (dd/MM/yyyy).
+        // NB : les CSV mêlent année 4 chiffres (dd/MM/yyyy) et 2 chiffres (dd/MM/yy) selon les saisons.
+        if (s.Contains('/'))
+        {
+            if (DateTime.TryParseExact(s, new[]
+                {
+                    "dd/MM/yyyy", "d/M/yyyy", "dd/MM/yy", "d/M/yy",
+                    "dd/MM/yyyy HH:mm", "d/M/yyyy H:mm", "dd/MM/yy HH:mm", "d/M/yy H:mm"
+                }, CultureInfo.InvariantCulture, DateTimeStyles.None, out date))
+                return true;
+            // Repli : TryParse classique (peut gérer d'autres séparateurs).
+            return DateTime.TryParse(s, CultureInfo.InvariantCulture, DateTimeStyles.None, out date);
+        }
+
+        // Format ISO (yyyy-MM-dd) ou autres.
+        return DateTime.TryParse(s, CultureInfo.InvariantCulture, DateTimeStyles.None, out date);
+    }
 
     private static Dictionary<string, Odds> ParseOdds(MatchCsvRow row)
     {

@@ -68,6 +68,58 @@ public class CsvParserServiceTests
     }
 
     [Fact]
+    public async Task ParseMatchesAsync_FrenchDateFormat_ShouldParseCorrectly()
+    {
+        // Format français DD/MM/YYYY (celui du CSV principal de référence).
+        var csvContent = @"Date,League,Season,HomeTeam,AwayTeam,HomeGoals,AwayGoals,Result
+15/04/2025,Premier League,2025-2026,Man City,Arsenal,0,0,2
+09/08/2015,Premier League,2015-2016,Leicester,Sunderland,1,0,1";
+
+        var tempFile = Path.GetTempFileName();
+        await File.WriteAllTextAsync(tempFile, csvContent);
+
+        try
+        {
+            var parser = new CsvParserService();
+            var matches = await parser.ParseMatchesAsync(tempFile);
+
+            matches.Should().HaveCount(2);
+            matches[0].Date.Should().Be(new DateTime(2025, 4, 15));
+            matches[1].Date.Should().Be(new DateTime(2015, 8, 9));
+        }
+        finally
+        {
+            File.Delete(tempFile);
+        }
+    }
+
+    [Fact]
+    public async Task ParseMatchesAsync_TwoDigitYear_ShouldParseCorrectly()
+    {
+        // Saison 2015-2016 du CSV de référence : année sur 2 chiffres (dd/MM/yy).
+        var csvContent = @"Date,League,Season,HomeTeam,AwayTeam,HomeGoals,AwayGoals,Result
+08/08/15,Premier League,2015-2016,Bournemouth,Aston Villa,0,1,2
+21/08/15,LaLiga,2015-2016,Valencia,Sevilla,1,1,X";
+
+        var tempFile = Path.GetTempFileName();
+        await File.WriteAllTextAsync(tempFile, csvContent);
+
+        try
+        {
+            var parser = new CsvParserService();
+            var matches = await parser.ParseMatchesAsync(tempFile);
+
+            matches.Should().HaveCount(2);
+            matches[0].Date.Should().Be(new DateTime(2015, 8, 8));
+            matches[1].Date.Should().Be(new DateTime(2015, 8, 21));
+        }
+        finally
+        {
+            File.Delete(tempFile);
+        }
+    }
+
+    [Fact]
     public async Task ParseMatchesAsync_EmptyFile_ShouldReturnEmptyList()
     {
         var csvContent = @"Date,League,Season,HomeTeam,AwayTeam";
