@@ -6,6 +6,8 @@ public class PredictionResultViewModel
     public string League { get; set; } = string.Empty;
     public string HomeTeam { get; set; } = string.Empty;
     public string AwayTeam { get; set; } = string.Empty;
+    public string? HomeCoach { get; set; }
+    public string? AwayCoach { get; set; }
     public string PredictedResult { get; set; } = string.Empty;
     public double Probability1 { get; set; }
     public double ProbabilityX { get; set; }

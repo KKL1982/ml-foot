@@ -58,6 +58,13 @@ builder.Services.AddSingleton(sp =>
 builder.Services.AddTransient<ICsvParser, CsvParserService>();
 builder.Services.AddSingleton<IPredictionService, PredictionService>();
 
+// Coachs persistés (fichier JSON, ex. pour les mises à jour d'entraîneurs) +
+// service de prédiction batch (représentations enrichies pour l'affichage).
+var coachDbPath = Path.Combine(Directory.GetCurrentDirectory(),
+    Environment.GetEnvironmentVariable("COACH_DB") ?? "coaches.json");
+builder.Services.AddSingleton<ICoachRepository>(_ => new JsonCoachRepository(coachDbPath));
+builder.Services.AddSingleton<BatchPredictionService>();
+
 // ── Odds API ──
 builder.Services.AddMemoryCache();
 builder.Services.AddHttpClient<IOddsFetcherService, OddsFetcherService>(client =>

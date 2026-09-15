@@ -209,11 +209,46 @@ Au lieu d'un simple tableau (équipes, date, résultat), le plan enrichit l'affi
 
 ## 7. Statut
 
-- [ ] Étape 1 — ChampionshipService
-- [ ] Étape 2 — CoachRepository
-- [ ] Étape 3 — Mise à jour des coachs
-- [ ] Étape 4 — FeatureEngineer (coachs à jour)
-- [ ] Étape 5 — BatchPredictionService
-- [ ] Étape 6 — CLI (coach, load-matches, batch predict)
-- [ ] Étape 7 — Web (tableau + API)
-- [ ] Étape 8 — Non-régression (tout vert)
+- [x] Étape 1 — ChampionshipService
+- [x] Étape 2 — CoachRepository
+- [x] Étape 3 — Mise à jour des coachs
+- [x] Étape 4 — FeatureEngineer (coachs à jour)
+- [x] Étape 5 — BatchPredictionService
+- [x] Étape 6 — CLI (coach, load-matches, batch predict)
+- [x] Étape 7 — Web (tableau + API)
+- [x] Étape 8 — Non-régression (tout vert)
+
+## 8. Récap de la réalisation (TDD, tout vert)
+
+### Suite de tests
+- ML.Tests : **28** verts (24 baseline + 4 FeatureEngineer-coachs)
+- Tests : **69** verts (34 baseline + 35 nouveaux)
+- Total : **97 tests verts, 0 échec** (baseline : 58)
+
+### Fichiers nouvellement créés
+| Fichier | Rôle |
+|---|---|
+| `Domain/Entities/Championship.cs` | Championnat (code + nom) |
+| `Domain/Entities/CoachAssignment.cs` | Affectation coach (team/coach/date) |
+| `Application/Interfaces/IChampionshipService.cs` | Service championnats |
+| `Application/Interfaces/ICoachRepository.cs` | Persistance coachs |
+| `Application/Services/ChampionshipService.cs` | Championnats, équipes, chargement matchs |
+| `Application/Services/InMemoryCoachRepository.cs` | Repo coachs en mémoire |
+| `Application/Services/JsonCoachRepository.cs` | Repo coachs persisté JSON |
+| `Application/Services/CoachService.cs` | Mise à jour / synchronisation coachs |
+| `Application/Services/BatchResultFormatter.cs` | Table console + CSV |
+| `Application/DTOs/CoachUpdate.cs` | Demande mise à jour coach |
+| `Application/DTOs/BatchPredictionItem.cs` | Prédiction enrichie (affichage) |
+| `ML/FeatureEngineering/FeatureEngineer.cs` (modif) | Coachs à jour injectables (tenure) |
+| `Web/Services/BatchPredictionService.cs` | Orchestration prédiction batch enrichie |
+| `Cli/MatchDataBuilder.cs` | Feature pour match à prédire |
+| `Cli/Program.cs` (modif) | Commandes `coach`, `load-matches`, `batch-predict` |
+| `Web/Controllers/BatchController.cs` (modif) | Tableau enrichi + coachs |
+| `Web/Controllers/ApiController.cs` (modif) | Endpoint `POST /api/batch/predict` |
+| `Web/Views/Batch/Result.cshtml` (modif) | Colonnes coachs |
+| `Web/Program.cs` (modif) | DI coach repo + batch service |
+
+### Points de vigilance
+- `BatchPredictionService.Predict` prédit des matchs **à venir** (non joués) sans passer par `BuildFeatures` (qui ne traite que les matchs joués) — validé par test.
+- Le mode par défaut du Batch Web est passé en **Multiclass** (1/X/2 + coachs + bet), contrairement à l'ancien chemin binary. La vue gère déjà les deux modes.
+- Le parsing de date du CSV préexistant (format `DD/MM/YYYY`) tombe sur `0001-01-01` pour certains CSV — bug **préexistant**, hors périmètre (non introduit par ce chantier).

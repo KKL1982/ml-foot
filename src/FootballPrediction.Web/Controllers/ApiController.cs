@@ -1,6 +1,7 @@
 using FootballPrediction.Application.DTOs;
 using FootballPrediction.Application.Interfaces;
 using FootballPrediction.Web.Models;
+using FootballPrediction.Web.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
@@ -13,15 +14,18 @@ namespace FootballPrediction.Web.Controllers;
 public class ApiController : ControllerBase
 {
     private readonly IPredictionService _predictionService;
+    private readonly BatchPredictionService _batchPredictionService;
     private readonly ModelSettings _settings;
     private readonly ILogger<ApiController> _logger;
 
     public ApiController(
         IPredictionService predictionService,
+        BatchPredictionService batchPredictionService,
         IOptions<ModelSettings> options,
         ILogger<ApiController> logger)
     {
         _predictionService = predictionService;
+        _batchPredictionService = batchPredictionService;
         _settings = options.Value;
         _logger = logger;
     }
@@ -90,5 +94,30 @@ public class ApiController : ControllerBase
             modelPath = _settings.BinaryModelPath,
             timestamp = DateTime.UtcNow
         });
+    }
+
+    /// <summary>
+    /// Prédit un batch de matchs NON encore joués (reçus en JSON) et retourne les
+    /// résultats enrichis (coachs à jour, probabilités 1/X/2, confiance, bet).
+    /// </summary>
+    [HttpPost("batch/predict")]
+    public ActionResult<IReadOnlyList<BatchPredictionItem>> PredictBatch([FromBody] List<PredictionInputViewModel> model)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        var matches = model.Select(m => new Domain.Entities.Match
+        {
+            Date = m.Date ?? DateTime.Today,
+            League = m.League,
+            HomeTeam = m.HomeTeam,
+            AwayTeam = m.AwayTeam,
+            HomeCoach = m.HomeCoach,
+            AwayCoach = m.AwayCoach,
+        }).ToList();
+
+        var items = _batchPredictionService.Predict(matches, threshold: 0.5);
+        _logger.LogInformation("API batch: {Count} matches predicted", items.Count);
+        return Ok(items);
     }
 }

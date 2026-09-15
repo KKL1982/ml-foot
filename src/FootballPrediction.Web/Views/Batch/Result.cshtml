@@ -72,6 +72,8 @@
                     <th>League</th>
                     <th>Home</th>
                     <th>Away</th>
+                    <th>HomeCoach</th>
+                    <th>AwayCoach</th>
                     <th>Bet</th>
                     @if (isBinary)
                     {
@@ -100,6 +102,8 @@
                         <td>@p.League</td>
                         <td>@p.HomeTeam</td>
                         <td>@p.AwayTeam</td>
+                        <td>@(p.HomeCoach ?? "—")</td>
+                        <td>@(p.AwayCoach ?? "—")</td>
                         <td><span class="badge @badgeClass">@p.PredictedResult</span></td>
                         @if (isBinary)
                         {

@@ -3,6 +3,7 @@ using FootballPrediction.Application.DTOs;
 using FootballPrediction.Application.Interfaces;
 using FootballPrediction.Web.Controllers;
 using FootballPrediction.Web.Models;
+using FootballPrediction.Web.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
@@ -18,13 +19,15 @@ public class BatchControllerTests
     private static BatchController CreateController(
         IPredictionService? predService = null,
         ICsvParser? csvParser = null,
+        BatchPredictionService? batchService = null,
         string defaultMode = "Binary")
     {
         predService ??= new Mock<IPredictionService>().Object;
         csvParser ??= new Mock<ICsvParser>().Object;
+        batchService ??= new BatchPredictionService(predService);
         var settings = Options.Create(new ModelSettings { DefaultMode = defaultMode });
         var logger = new Mock<ILogger<BatchController>>().Object;
-        var controller = new BatchController(predService, csvParser, settings, logger);
+        var controller = new BatchController(predService, batchService, csvParser, settings, logger);
         controller.ControllerContext = new ControllerContext
         {
             HttpContext = new DefaultHttpContext()
@@ -73,11 +76,11 @@ public class BatchControllerTests
             });
 
         var predServiceMock = new Mock<IPredictionService>();
-        predServiceMock.Setup(s => s.PredictBatchBinary(It.IsAny<IReadOnlyList<PredictionInputDto>>(), It.IsAny<double>()))
-            .Returns(new List<BinaryPredictionOutputDto>
+        predServiceMock.Setup(s => s.PredictBatchMulticlass(It.IsAny<IReadOnlyList<PredictionInputDto>>()))
+            .Returns(new List<PredictionOutputDto>
             {
-                new() { HomeTeam = "A", AwayTeam = "B", Bet = "HOME", HomeWinProbability = 0.65, Confidence = 0.65 },
-                new() { HomeTeam = "C", AwayTeam = "D", Bet = "AWAY", HomeWinProbability = 0.35, Confidence = 0.65 }
+                new() { HomeTeam = "A", AwayTeam = "B", PredictedResult = "1", Probability1 = 0.65, ProbabilityX = 0.2, Probability2 = 0.15, Confidence = 0.65 },
+                new() { HomeTeam = "C", AwayTeam = "D", PredictedResult = "2", Probability1 = 0.3, ProbabilityX = 0.2, Probability2 = 0.5, Confidence = 0.5 }
             });
 
         var csvContent = @"Date,League,Season,HomeTeam,AwayTeam,HomeGoals,AwayGoals,Result,Bet365_1,Bet365_X,Bet365_2
@@ -109,7 +112,7 @@ public class BatchControllerTests
     }
 
     [Fact]
-    public async Task Download_ShouldReturnCsvFile()
+    public void Download_ShouldReturnCsvFile()
     {
         var controller = CreateController();
         controller.TempData["BatchPredictionsCsv"] = "Date,League,Home,Away,Bet,HomeProb,Conf\n2024-01-01,PL,A,B,HOME,0.65,0.65";

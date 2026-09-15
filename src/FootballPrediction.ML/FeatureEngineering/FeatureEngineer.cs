@@ -7,15 +7,38 @@ namespace FootballPrediction.ML.FeatureEngineering;
 public static class FeatureEngineer
 {
     /// <summary>
+    /// Résout le coach actif d'une équipe à une date donnée. Si null est fourni,
+    /// on retombe sur le comportement figé historique (tenure basée sur le CSV seul).
+    /// </summary>
+    /// <param name="team">Nom de l'équipe.</param>
+    /// <param name="asOfDate">Date du match considéré.</param>
+    public delegate string? CoachResolver(string team, DateTime asOfDate);
+
+    /// <summary>
     /// Build features from matches. When binaryMode is true, draws (Result=X) are filtered out
     /// and Label is restricted to "1" (HomeWin) or "2" (AwayWin).
     /// </summary>
     public static List<MatchData> BuildFeatures(IReadOnlyList<Match> matches, bool binaryMode = false)
+        => BuildFeatures(matches, binaryMode, coachResolver: null);
+
+    /// <summary>
+    /// Build features from matches, avec résolution des coachs à jour via un
+    /// <paramref name="coachResolver"/> (ex. alimenté par un ICoachRepository).
+    /// Sans resolver, les coachs du CSV sont utilisés (comportement historique).
+    /// </summary>
+    public static List<MatchData> BuildFeatures(
+        IReadOnlyList<Match> matches,
+        bool binaryMode,
+        CoachResolver? coachResolver)
     {
         var sorted = matches.OrderBy(m => m.Date).ToList();
         var result = new List<MatchData>(sorted.Count);
 
         var coachMatchCounts = new Dictionary<string, Dictionary<string, int>>(StringComparer.OrdinalIgnoreCase);
+        // Tenure au sens "nombre de matchs consécutifs du coach courant" : quand un
+        // resolver fournit le coach actif (déjà à jour), la tenure doit être basée
+        // sur le coach ACTIF à la date du match, pas sur le champ figé du CSV.
+        var resolverCoachCounts = new Dictionary<string, Dictionary<string, int>>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var match in sorted)
         {
@@ -42,8 +65,24 @@ public static class FeatureEngineer
                     (double)pinnacle.HomeWin, (double)pinnacle.Draw, (double)pinnacle.AwayWin);
             }
 
-            var homeTenure = GetCoachTenure(match.HomeTeam, match.HomeCoach, match.Date, coachMatchCounts);
-            var awayTenure = GetCoachTenure(match.AwayTeam, match.AwayCoach, match.Date, coachMatchCounts);
+            // Coachs à jour : si un resolver est fourni, il prime sur le CSV figé.
+            var homeCoach = ResolveCoach(match.HomeTeam, match.Date, match.HomeCoach, coachResolver);
+            var awayCoach = ResolveCoach(match.AwayTeam, match.Date, match.AwayCoach, coachResolver);
+
+            // Tenure : nombre de matchs du coach courant. Pour un coach résolu par le
+            // resolver, on compte les matchs déjà vus avec CE coach (remet à zéro à un
+            // changement d'entraîneur). Sinon on garde le comportement historique.
+            double homeTenure, awayTenure;
+            if (coachResolver != null)
+            {
+                homeTenure = BumpTenure(match.HomeTeam, homeCoach ?? "Unknown", resolverCoachCounts);
+                awayTenure = BumpTenure(match.AwayTeam, awayCoach ?? "Unknown", resolverCoachCounts);
+            }
+            else
+            {
+                homeTenure = GetCoachTenure(match.HomeTeam, match.HomeCoach, match.Date, coachMatchCounts);
+                awayTenure = GetCoachTenure(match.AwayTeam, match.AwayCoach, match.Date, coachMatchCounts);
+            }
 
             result.Add(new MatchData
             {
@@ -51,8 +90,8 @@ public static class FeatureEngineer
                 Season = match.Season,
                 HomeTeam = match.HomeTeam,
                 AwayTeam = match.AwayTeam,
-                HomeCoach = match.HomeCoach ?? "Unknown",
-                AwayCoach = match.AwayCoach ?? "Unknown",
+                HomeCoach = homeCoach ?? match.HomeCoach ?? "Unknown",
+                AwayCoach = awayCoach ?? match.AwayCoach ?? "Unknown",
                 Bet365HomeProb = (float)bet365Home,
                 Bet365DrawProb = (float)bet365Draw,
                 Bet365AwayProb = (float)bet365Away,
@@ -74,6 +113,35 @@ public static class FeatureEngineer
         }
 
         return result;
+    }
+
+    private static string? ResolveCoach(string team, DateTime date, string? csvCoach, CoachResolver? resolver)
+    {
+        if (resolver == null)
+            return string.IsNullOrEmpty(csvCoach) ? null : csvCoach;
+        var resolved = resolver(team, date);
+        if (resolved == null)
+            return string.IsNullOrEmpty(csvCoach) ? null : csvCoach;
+        return resolved;
+    }
+
+    private static double BumpTenure(
+        string team,
+        string coach,
+        Dictionary<string, Dictionary<string, int>> tenures)
+    {
+        if (!tenures.ContainsKey(team))
+            tenures[team] = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+        var teamTenures = tenures[team];
+        if (!teamTenures.ContainsKey(coach))
+        {
+            teamTenures[coach] = 1;
+            return 0;
+        }
+        var current = teamTenures[coach];
+        teamTenures[coach] = current + 1;
+        return current;
     }
 
     private static double GetCoachTenure(

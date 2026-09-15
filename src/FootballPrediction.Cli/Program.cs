@@ -1,5 +1,9 @@
 using System.CommandLine;
+using FootballPrediction.Application.DTOs;
+using FootballPrediction.Application.Interfaces;
 using FootballPrediction.Application.Services;
+using FootballPrediction.Domain.Entities;
+using FootballPrediction.ML.DataModels;
 using FootballPrediction.ML.FeatureEngineering;
 using FootballPrediction.ML.ModelEvaluation;
 using FootballPrediction.ML.Prediction;
@@ -49,11 +53,55 @@ class Program
         tuneCommand.AddOption(tuneOutputOpt);
         tuneCommand.SetHandler(TuneAsync, tuneInputOpt, tuneOutputOpt);
 
+        // ── Coach commands ──
+        var coachCommand = new Command("coach", "Manage team coach assignments (championship coaches)");
+        var coachUpdate = new Command("update", "Set/update a team's coach from an effective date");
+        var coachUpdateTeam = new Option<string>("--team", "Team name") { IsRequired = true };
+        var coachUpdateName = new Option<string>("--coach", "Coach name") { IsRequired = true };
+        var coachUpdateDate = new Option<DateTime>("--date", () => DateTime.Today, "Effective from date (YYYY-MM-DD)");
+        var coachUpdateLeague = new Option<string>("--league", () => "", "League (optional)");
+        coachUpdate.AddOption(coachUpdateTeam);
+        coachUpdate.AddOption(coachUpdateName);
+        coachUpdate.AddOption(coachUpdateDate);
+        coachUpdate.AddOption(coachUpdateLeague);
+        coachUpdate.SetHandler(CoachUpdateAsync, coachUpdateTeam, coachUpdateName, coachUpdateDate, coachUpdateLeague);
+
+        var coachList = new Command("list", "List team coaches");
+        var coachListLeague = new Option<string>("--league", () => "", "Filter by league (PL/LL/L1/BL) or name");
+        coachList.AddOption(coachListLeague);
+        coachList.SetHandler(CoachListAsync, coachListLeague);
+
+        coachCommand.AddCommand(coachUpdate);
+        coachCommand.AddCommand(coachList);
+
+        // ── load-matches command ──
+        var loadMatches = new Command("load-matches", "Load championship matches (to predict) to a CSV");
+        var loadMatchesLeague = new Option<string>("--league", "League (PL/LL/L1/BL or name)") { IsRequired = true };
+        var loadMatchesInput = new Option<string>("--input", "Source match CSV (with results)") { IsRequired = true };
+        var loadMatchesOut = new Option<string>("--out", "Output CSV of matches to predict") { IsRequired = true };
+        loadMatches.AddOption(loadMatchesLeague);
+        loadMatches.AddOption(loadMatchesInput);
+        loadMatches.AddOption(loadMatchesOut);
+        loadMatches.SetHandler(LoadMatchesAsync, loadMatchesLeague, loadMatchesInput, loadMatchesOut);
+
+        // ── batch-predict command ──
+        var batchPredict = new Command("batch-predict", "Predict a batch of matches from a CSV, output table + CSV");
+        var batchModel = new Option<string>("--model", "Path to trained model") { IsRequired = true };
+        var batchInput = new Option<string>("--input", "Path to CSV of matches to predict") { IsRequired = true };
+        var batchOut = new Option<string>("--out", "Path to output CSV") { IsRequired = true };
+        batchPredict.AddOption(batchModel);
+        batchPredict.AddOption(batchInput);
+        batchPredict.AddOption(batchOut);
+        batchPredict.SetHandler(BatchPredictAsync, batchModel, batchInput, batchOut);
+
         var root = new RootCommand("FootballPrediction — 1X2 match prediction tool");
         root.AddCommand(trainCommand);
         root.AddCommand(predictCommand);
         root.AddCommand(compareCommand);
         root.AddCommand(tuneCommand);
+        root.AddCommand(coachCommand);
+        root.AddCommand(loadMatches);
+        root.AddCommand(batchPredict);
 
         return await root.InvokeAsync(args);
     }
@@ -242,5 +290,119 @@ class Program
         _ => binary ? ModelTrainer.TrainerKind.SdcaLogisticRegression : ModelTrainer.TrainerKind.SdcaMaximumEntropy
     };
 
-    static string Escape(string value) => value.Contains(',') ? $"\"{value}\"" : value;
+    static void CoachUpdateAsync(string team, string coach, DateTime date, string league)
+    {
+        var repo = OpenCoachRepo();
+        var svc = new CoachService(repo);
+        svc.UpdateCoach(team, coach, date, string.IsNullOrEmpty(league) ? null : league);
+        Console.WriteLine($"✅ Coach mis à jour : {team} → {coach} (depuis {date:yyyy-MM-dd})");
+    }
+
+    static void CoachListAsync(string league)
+    {
+        var repo = OpenCoachRepo();
+        var svc = new CoachService(repo);
+        var teams = repo.GetTeams();
+        if (teams.Count == 0)
+        {
+            Console.WriteLine("Aucun entraîneur enregistré. Utilisez: coach update --team <T> --coach <C>");
+            return;
+        }
+        Console.WriteLine($"{"Équipe",-20} {"Coach",-20} Depuis");
+        Console.WriteLine(new string('-', 50));
+        foreach (var team in teams)
+        {
+            var hist = svc.GetHistory(team);
+            var current = hist.OrderByDescending(h => h.EffectiveFrom).FirstOrDefault();
+            if (current == null) continue;
+            if (!string.IsNullOrEmpty(league) && current.League != null
+                && !current.League.Equals(league, StringComparison.OrdinalIgnoreCase))
+                continue;
+            Console.WriteLine($"{team,-20} {current.Coach,-20} {current.EffectiveFrom:yyyy-MM-dd}");
+        }
+    }
+
+    static async Task LoadMatchesAsync(string league, string input, string outFile)
+    {
+        if (!File.Exists(input)) { Console.Error.WriteLine($"Error: File not found: {input}"); return; }
+        var parser = new CsvParserService();
+        var all = await parser.ParseMatchesAsync(input);
+        var svc = new ChampionshipService(parser, input);
+        var matches = await svc.LoadMatchesAsync(league);
+        if (matches.Count == 0) { Console.WriteLine($"Aucun match pour '{league}' dans {input}."); return; }
+
+        await using var w = new StreamWriter(outFile);
+        await w.WriteLineAsync("Date,League,Season,HomeTeam,AwayTeam,HomeGoals,AwayGoals,Result,HomeCoach,AwayCoach");
+        foreach (var m in matches.OrderBy(x => x.Date))
+        {
+            var hg = m.HomeGoals?.ToString() ?? "";
+            var ag = m.AwayGoals?.ToString() ?? "";
+            var res = m.Result?.ToString() ?? "";
+            await w.WriteLineAsync($"{m.Date:yyyy-MM-dd},{Escape(m.League)},{Escape(m.Season)},{Escape(m.HomeTeam)},{Escape(m.AwayTeam)},{hg},{ag},{res},{Escape(m.HomeCoach)},{Escape(m.AwayCoach)}");
+        }
+        Console.WriteLine($"✅ {matches.Count} matchs de '{league}' écrits dans {outFile}");
+    }
+
+    static async Task BatchPredictAsync(string model, string input, string output)
+    {
+        if (!File.Exists(model)) { Console.Error.WriteLine($"Error: Model file not found: {model}"); return; }
+        if (!File.Exists(input)) { Console.Error.WriteLine($"Error: File not found: {input}"); return; }
+
+        var parser = new CsvParserService();
+        var matches = await parser.ParseMatchesAsync(input);
+        var toPredict = matches.Where(m => m.Result == null).ToList();
+        if (toPredict.Count == 0) { Console.WriteLine("Aucun match à prédire (tous les matchs ont un résultat)."); return; }
+
+        var predictor = new MatchPredictor();
+        predictor.LoadModel(model);
+        var coachRepo = OpenCoachRepo();
+
+        var items = new List<BatchPredictionItem>();
+        foreach (var m in toPredict)
+        {
+            var md = MatchDataBuilder.Build(m, coachRepo);
+            var pred = predictor.Predict(new[] { md })[0];
+            var p1 = pred.Probability1 > 0 ? pred.Probability1 : 0.45f;
+            var p2 = pred.Probability2 > 0 ? pred.Probability2 : 0.27f;
+            var pX = pred.ProbabilityX > 0 ? pred.ProbabilityX : 0.28f;
+            var sum = p1 + pX + p2 > 0 ? p1 + pX + p2 : 1f;
+            p1 /= sum; pX /= sum; p2 /= sum;
+            var result = !string.IsNullOrEmpty(pred.PredictedResult) ? pred.PredictedResult
+                : p1 >= pX && p1 >= p2 ? "1" : pX >= p1 && pX >= p2 ? "X" : "2";
+            var conf = Math.Max(p1, Math.Max(pX, p2));
+            var max1 = p1 >= pX && p1 >= p2;
+            var max2 = p2 >= p1 && p2 >= pX;
+            var bet = conf >= 0.5 ? (max1 ? "HOME" : max2 ? "AWAY" : "SKIP") : "SKIP";
+
+            items.Add(new BatchPredictionItem
+            {
+                Date = m.Date,
+                League = m.League,
+                HomeTeam = m.HomeTeam,
+                AwayTeam = m.AwayTeam,
+                HomeCoach = m.HomeCoach,
+                AwayCoach = m.AwayCoach,
+                PredictedResult = result,
+                Probability1 = Math.Round((double)p1, 3),
+                ProbabilityX = Math.Round((double)pX, 3),
+                Probability2 = Math.Round((double)p2, 3),
+                Confidence = Math.Round((double)conf, 3),
+                Bet = bet,
+                Comment = bet switch { "HOME" => "Home win likely", "AWAY" => "Away win likely", _ => "Uncertain" }
+            });
+        }
+
+        Console.WriteLine("\n=== Prédictions batch ===");
+        Console.WriteLine(BatchResultFormatter.ToConsoleTable(items));
+        await File.WriteAllTextAsync(output, BatchResultFormatter.ToCsv(items));
+        Console.WriteLine($"\n✅ {items.Count} prédictions écrites dans {output}");
+    }
+
+    static ICoachRepository OpenCoachRepo()
+    {
+        var path = Environment.GetEnvironmentVariable("COACH_DB") ?? Path.Combine(Directory.GetCurrentDirectory(), "coaches.json");
+        return new JsonCoachRepository(path);
+    }
+
+    static string Escape(string? value) => value == null ? string.Empty : value.Contains(',') ? $"\"{value}\"" : value;
 }

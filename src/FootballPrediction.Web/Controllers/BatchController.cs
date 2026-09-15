@@ -1,7 +1,9 @@
 using FootballPrediction.Application.DTOs;
 using FootballPrediction.Application.Interfaces;
+using FootballPrediction.Application.Services;
 using FootballPrediction.ML.FeatureEngineering;
 using FootballPrediction.Web.Models;
+using FootballPrediction.Web.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
@@ -13,17 +15,20 @@ namespace FootballPrediction.Web.Controllers;
 public class BatchController : Controller
 {
     private readonly IPredictionService _predictionService;
+    private readonly BatchPredictionService _batchPredictionService;
     private readonly ICsvParser _csvParser;
     private readonly ModelSettings _settings;
     private readonly ILogger<BatchController> _logger;
 
     public BatchController(
         IPredictionService predictionService,
+        BatchPredictionService batchPredictionService,
         ICsvParser csvParser,
         IOptions<ModelSettings> options,
         ILogger<BatchController> logger)
     {
         _predictionService = predictionService;
+        _batchPredictionService = batchPredictionService;
         _csvParser = csvParser;
         _settings = options.Value;
         _logger = logger;
@@ -56,56 +61,45 @@ public class BatchController : Controller
             var matches = await _csvParser.ParseMatchesAsync(tempPath);
             var features = FeatureEngineer.BuildFeatures(matches);
 
-            var inputs = features.Select(f => new PredictionInputDto
-            {
-                Date = DateTime.Today,
-                League = f.League,
-                HomeTeam = f.HomeTeam,
-                AwayTeam = f.AwayTeam,
-                Bet365Home = f.Bet365HomeProb > 0 ? 1.0 / f.Bet365HomeProb : null,
-                Bet365Draw = f.Bet365DrawProb > 0 ? 1.0 / f.Bet365DrawProb : null,
-                Bet365Away = f.Bet365AwayProb > 0 ? 1.0 / f.Bet365AwayProb : null,
-                PinnacleHome = f.PinnacleHomeProb > 0 ? 1.0 / f.PinnacleHomeProb : null,
-                PinnacleDraw = f.PinnacleDrawProb > 0 ? 1.0 / f.PinnacleDrawProb : null,
-                PinnacleAway = f.PinnacleAwayProb > 0 ? 1.0 / f.PinnacleAwayProb : null
-            }).ToList();
-
-            var binaryPreds = _predictionService.PredictBatchBinary(inputs);
+            // Prédiction batch enrichie (multiclass 1/X/2 + coachs à jour + bet).
+            var items = _batchPredictionService.Predict(matches);
 
             var csv = new StringBuilder();
-            csv.AppendLine("Date,League,HomeTeam,AwayTeam,Bet,HomeWinProbability,Confidence,Comment");
+            csv.AppendLine(BatchResultFormatter.CsvHeader);
             var viewModels = new List<PredictionResultViewModel>();
-            for (int i = 0; i < binaryPreds.Count; i++)
+            foreach (var it in items)
             {
-                var bp = binaryPreds[i];
-                csv.AppendLine($"{bp.Date:yyyy-MM-dd},{Escape(bp.League)},{Escape(bp.HomeTeam)},{Escape(bp.AwayTeam)},{bp.Bet},{bp.HomeWinProbability:F3},{bp.Confidence:F3},{Escape(bp.Comment)}");
+                csv.AppendLine(BatchResultFormatter.ToCsv(new[] { it }).Trim());
                 viewModels.Add(new PredictionResultViewModel
                 {
-                    Date = bp.Date,
-                    League = bp.League,
-                    HomeTeam = bp.HomeTeam,
-                    AwayTeam = bp.AwayTeam,
-                    PredictedResult = bp.Bet,
-                    Probability1 = bp.HomeWinProbability,
-                    Probability2 = bp.AwayWinProbability,
-                    Confidence = bp.Confidence,
-                    Comment = bp.Comment,
-                    ModelUsed = "ML Model (Binary)",
-                    Mode = "Binary",
-                    HomeWinProbability = bp.HomeWinProbability,
-                    AwayWinProbability = bp.AwayWinProbability
+                    Date = it.Date,
+                    League = it.League,
+                    HomeTeam = it.HomeTeam,
+                    AwayTeam = it.AwayTeam,
+                    HomeCoach = it.HomeCoach,
+                    AwayCoach = it.AwayCoach,
+                    PredictedResult = it.PredictedResult,
+                    Probability1 = it.Probability1,
+                    ProbabilityX = it.ProbabilityX,
+                    Probability2 = it.Probability2,
+                    Confidence = it.Confidence,
+                    Comment = it.Comment,
+                    HomeWinProbability = it.Probability1,
+                    AwayWinProbability = it.Probability2,
+                    ModelUsed = "ML Model (Batch)",
+                    Mode = "Multiclass"
                 });
             }
 
             TempData["BatchPredictionsCsv"] = csv.ToString();
 
             _logger.LogInformation("Batch processed: {Total} matches, {Predictions} predictions",
-                matches.Count, binaryPreds.Count);
+                matches.Count, items.Count);
 
             return View("Result", new BatchResultViewModel
             {
                 TotalMatches = matches.Count,
-                SuccessfulPredictions = binaryPreds.Count,
+                SuccessfulPredictions = items.Count,
                 Predictions = viewModels,
                 DownloadFileName = $"predictions_{DateTime.Now:yyyyMMdd_HHmmss}.csv"
             });
