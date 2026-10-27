@@ -52,6 +52,13 @@ public static class TeamNameMapper
         ("OGC Nice", "Nice"), ("Paris Saint-Germain FC", "Paris SG"), ("Stade de Reims", "Reims"),
         ("Stade Rennais FC", "Rennes"), ("AS Saint-Étienne", "St Etienne"), ("RC Strasbourg Alsace", "Strasbourg"),
         ("Toulouse FC", "Toulouse"), ("Paris FC", "Paris FC"),
+        // Variantes renvoyées par l'API
+        ("Racing Club de Lens", "Lens"), ("Stade Rennais FC 1901", "Rennes"),
+        // Promus / équipes absentes des données d'entraînement (noms style football-data.co.uk)
+        ("Coventry City FC", "Coventry"), ("Hull City AFC", "Hull"), ("FC Schalke 04", "Schalke 04"),
+        ("SC Paderborn 07", "Paderborn"), ("SV 07 Elversberg", "Elversberg"), ("ES Troyes AC", "Troyes"),
+        ("Le Mans FC", "Le Mans"), ("Málaga CF", "Malaga"), ("RC Deportivo La Coruña", "La Coruna"),
+        ("Real Racing Club de Santander", "Santander"),
     };
 
     private static readonly Dictionary<string, string> ByApiName = BuildByApiName();

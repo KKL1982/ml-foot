@@ -52,8 +52,9 @@ public class BatchPredictionService
         {
             preds = _predictionService.PredictBatchMulticlass(inputs);
         }
-        catch
+        catch (Exception ex)
         {
+            Console.Error.WriteLine($"[Batch] Prédiction impossible : {ex.Message}");
             preds = Array.Empty<PredictionOutputDto>();
         }
 

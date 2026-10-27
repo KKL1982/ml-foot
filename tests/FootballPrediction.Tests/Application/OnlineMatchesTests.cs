@@ -16,6 +16,10 @@ public class TeamNameMapperTests
     [InlineData("Club Atlético de Madrid", "Ath Madrid")]
     [InlineData("Borussia Mönchengladbach", "M'gladbach")]
     [InlineData("Nottingham Forest FC", "Nott'm Forest")]
+    [InlineData("Racing Club de Lens", "Lens")]
+    [InlineData("Stade Rennais FC 1901", "Rennes")]
+    [InlineData("Málaga CF", "Malaga")]
+    [InlineData("SV 07 Elversberg", "Elversberg")]
     public void Map_KnownApiName_ReturnsCsvName(string api, string expected)
     {
         var mapped = TeamNameMapper.Map(api);

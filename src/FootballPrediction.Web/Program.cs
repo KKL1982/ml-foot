@@ -50,9 +50,26 @@ builder.Services.AddSingleton(sp =>
 {
     var settings = sp.GetRequiredService<IOptions<ModelSettings>>().Value;
     var predictor = new MatchPredictor();
-    var modelPath = Path.Combine(Directory.GetCurrentDirectory(), settings.BinaryModelPath);
-    if (File.Exists(modelPath))
+    // Le chemin configuré (../../models/...) vaut en développement ; dans Docker le modèle
+    // est dans <app>/models. On essaie donc plusieurs emplacements.
+    var fileName = Path.GetFileName(settings.BinaryModelPath);
+    var candidates = new[]
+    {
+        Path.Combine(Directory.GetCurrentDirectory(), settings.BinaryModelPath),
+        Path.Combine(Directory.GetCurrentDirectory(), "models", fileName),
+        Path.Combine(AppContext.BaseDirectory, "models", fileName),
+    };
+    var modelPath = candidates.FirstOrDefault(File.Exists);
+    if (modelPath != null)
+    {
         predictor.LoadModel(modelPath);
+        Console.WriteLine($"[Model] Modèle chargé : {Path.GetFullPath(modelPath)}");
+    }
+    else
+    {
+        Console.Error.WriteLine("[Model] ERREUR : modèle introuvable. Chemins essayés : " +
+            string.Join(" | ", candidates.Select(Path.GetFullPath)));
+    }
     return predictor;
 });
 builder.Services.AddTransient<ICsvParser, CsvParserService>();
@@ -91,6 +108,9 @@ builder.Services.AddHttpClient<IOddsFetcherService, OddsFetcherService>(client =
 });
 
 var app = builder.Build();
+
+// Charge le modèle dès le démarrage pour que son absence soit visible dans les logs.
+_ = app.Services.GetRequiredService<MatchPredictor>();
 
 // ── Seed admin user ──
 using (var scope = app.Services.CreateScope())
