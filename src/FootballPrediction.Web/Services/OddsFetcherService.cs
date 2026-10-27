@@ -1,11 +1,14 @@
 using System.Text.Json;
+using FootballPrediction.Application.Interfaces;
+using FootballPrediction.Application.Services;
+using FootballPrediction.Domain.Entities;
 using FootballPrediction.Web.Models;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 
 namespace FootballPrediction.Web.Services;
 
-public class OddsFetcherService : IOddsFetcherService
+public class OddsFetcherService : IOddsFetcherService, IMatchOddsSource
 {
     private readonly HttpClient _httpClient;
     private readonly IMemoryCache _cache;
@@ -123,6 +126,103 @@ public class OddsFetcherService : IOddsFetcherService
             _logger.LogError(ex, "Unexpected error in FetchOddsAsync");
             return Error($"Unexpected error: {ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// Cotes 1X2 de tous les matchs à venir d'un championnat (un seul appel API par championnat,
+    /// partagé avec FetchOddsAsync via le cache). Bookmakers reconnus : Bet365, Pinnacle, WilliamHill ;
+    /// si ni Bet365 ni Pinnacle ne sont proposés, la moyenne du marché est utilisée à leur place.
+    /// </summary>
+    public async Task<IReadOnlyList<ExternalMatchOdds>> GetUpcomingOddsAsync(string leagueCode, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(_options.ApiKey))
+            throw new FootballDataException("Clé The Odds API non configurée (OddsApi:ApiKey) : prédiction sans cotes.");
+
+        var leagueName = ChampionshipService.DefaultChampionships
+            .FirstOrDefault(c => string.Equals(c.Code, leagueCode, StringComparison.OrdinalIgnoreCase))?.Name
+            ?? throw new FootballDataException($"Championnat inconnu : {leagueCode}.");
+        var sportKey = MapLeague(leagueName)
+            ?? throw new FootballDataException($"Championnat non géré par The Odds API : {leagueName}.");
+
+        var cacheKey = $"odds_{sportKey}";
+        if (!_cache.TryGetValue(cacheKey, out List<OddsApiResponse>? list) || list == null)
+        {
+            var url = $"{_options.BaseUrl}/sports/{sportKey}/odds?regions={_options.Region}&markets=h2h&apiKey={_options.ApiKey}";
+            HttpResponseMessage response;
+            try
+            {
+                response = await _httpClient.GetAsync(url, ct);
+            }
+            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+            {
+                _logger.LogError(ex, "Odds API injoignable pour {SportKey}", sportKey);
+                throw new FootballDataException("The Odds API est injoignable.", ex);
+            }
+
+            using (response)
+            {
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogWarning("Odds API {Status} pour {SportKey}", (int)response.StatusCode, sportKey);
+                    throw new FootballDataException(response.StatusCode switch
+                    {
+                        System.Net.HttpStatusCode.Unauthorized => "clé The Odds API refusée.",
+                        System.Net.HttpStatusCode.TooManyRequests => "quota The Odds API atteint.",
+                        _ => $"The Odds API a répondu {(int)response.StatusCode}."
+                    });
+                }
+
+                try
+                {
+                    list = JsonSerializer.Deserialize<List<OddsApiResponse>>(
+                        await response.Content.ReadAsStringAsync(ct), JsonOptions) ?? new();
+                }
+                catch (JsonException ex)
+                {
+                    throw new FootballDataException("Réponse The Odds API illisible.", ex);
+                }
+            }
+            _cache.Set(cacheKey, list, TimeSpan.FromMinutes(_options.CacheMinutes));
+        }
+
+        return list.Select(ToExternalOdds).Where(o => o.Bookmakers.Count > 0).ToList();
+    }
+
+    private static ExternalMatchOdds ToExternalOdds(OddsApiResponse m)
+    {
+        var all = new List<Odds>();
+        var named = new Dictionary<string, Odds>();
+        foreach (var b in m.Bookmakers)
+        {
+            var h2h = b.Markets.FirstOrDefault(x => x.Key == "h2h");
+            var home = h2h?.Outcomes.FirstOrDefault(o => o.Name == m.HomeTeam)?.Price;
+            var draw = h2h?.Outcomes.FirstOrDefault(o => o.Name == "Draw")?.Price;
+            var away = h2h?.Outcomes.FirstOrDefault(o => o.Name == m.AwayTeam)?.Price;
+            if (home is not > 1 || draw is not > 1 || away is not > 1)
+                continue;
+
+            var odds = new Odds { Bookmaker = b.Key, HomeWin = (decimal)home.Value, Draw = (decimal)draw.Value, AwayWin = (decimal)away.Value };
+            all.Add(odds);
+            switch (b.Key.ToLowerInvariant())
+            {
+                case "bet365": named["Bet365"] = odds; break;
+                case "pinnacle": named["Pinnacle"] = odds; break;
+                case "williamhill": named["WilliamHill"] = odds; break;
+            }
+        }
+
+        if (!named.ContainsKey("Bet365") && !named.ContainsKey("Pinnacle") && all.Count > 0)
+        {
+            named["Pinnacle"] = new Odds
+            {
+                Bookmaker = "Moyenne",
+                HomeWin = all.Average(o => o.HomeWin),
+                Draw = all.Average(o => o.Draw),
+                AwayWin = all.Average(o => o.AwayWin),
+            };
+        }
+
+        return new ExternalMatchOdds(m.HomeTeam, m.AwayTeam, m.CommenceTime, named);
     }
 
     private FetchedOdds FindMatch(List<OddsApiResponse> list, string sportKey, string homeTeam, string awayTeam)

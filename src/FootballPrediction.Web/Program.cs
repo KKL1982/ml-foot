@@ -96,6 +96,7 @@ builder.Services.AddSingleton(sp =>
     var opts = sp.GetRequiredService<IOptions<FootballDataOptions>>().Value;
     return new MatchFileStore(Path.Combine(Directory.GetCurrentDirectory(), opts.MatchesDirectory));
 });
+builder.Services.AddTransient<IMatchOddsSource>(sp => (IMatchOddsSource)sp.GetRequiredService<IOddsFetcherService>());
 builder.Services.AddScoped<MatchFetchService>();
 builder.Services.AddScoped<CoachRefreshService>();
 

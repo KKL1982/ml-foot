@@ -59,6 +59,19 @@ public static class TeamNameMapper
         ("SC Paderborn 07", "Paderborn"), ("SV 07 Elversberg", "Elversberg"), ("ES Troyes AC", "Troyes"),
         ("Le Mans FC", "Le Mans"), ("Málaga CF", "Malaga"), ("RC Deportivo La Coruña", "La Coruna"),
         ("Real Racing Club de Santander", "Santander"),
+        // Variantes de The Odds API
+        ("Brighton and Hove Albion", "Brighton"), ("Wolverhampton Wanderers", "Wolves"),
+        ("Atletico Madrid", "Ath Madrid"), ("Athletic Bilbao", "Ath Bilbao"), ("Celta Vigo", "Celta"),
+        ("Real Betis", "Betis"), ("Real Sociedad", "Sociedad"), ("Espanyol", "Espanol"), ("Alavés", "Alaves"),
+        ("Rayo Vallecano", "Vallecano"), ("Oviedo", "Oviedo"),
+        ("Bayern Munich", "Bayern Munich"), ("Bayer Leverkusen", "Leverkusen"), ("FSV Mainz 05", "Mainz"),
+        ("FC St. Pauli", "St Pauli"), ("TSG Hoffenheim", "Hoffenheim"), ("Borussia Monchengladbach", "M'gladbach"),
+        ("FC Cologne", "FC Koln"),
+        ("Paris Saint Germain", "Paris SG"), ("Paris Saint-Germain", "Paris SG"), ("Olympique Marseille", "Marseille"),
+        ("Stade Rennes", "Rennes"), ("Saint-Etienne", "St Etienne"), ("Racing Lens", "Lens"),
+        ("Ipswich Town", "Ipswich"), ("Leeds United", "Leeds"), ("Newcastle United", "Newcastle"),
+        ("Tottenham Hotspur", "Tottenham"), ("West Ham United", "West Ham"), ("Manchester City", "Man City"),
+        ("Manchester United", "Man United"), ("Nottingham Forest", "Nott'm Forest"), ("Leicester City", "Leicester"),
     };
 
     private static readonly Dictionary<string, string> ByApiName = BuildByApiName();
@@ -70,7 +83,8 @@ public static class TeamNameMapper
             return new Mapped(string.Empty, false);
 
         var key = Normalize(sourceName);
-        if (ByApiName.TryGetValue(key, out var canonical))
+        if (ByApiName.TryGetValue(key, out var canonical)
+            || ByApiName.TryGetValue(StripKeySuffix(key), out canonical))
             return new Mapped(canonical, true);
         if (ByCanonical.TryGetValue(key, out canonical))
             return new Mapped(canonical, true);
@@ -82,7 +96,12 @@ public static class TeamNameMapper
     {
         var d = new Dictionary<string, string>();
         foreach (var (api, canonical) in Aliases)
-            d[Normalize(api)] = canonical;
+        {
+            var key = Normalize(api);
+            d[key] = canonical;
+            var bare = StripKeySuffix(key);
+            if (bare.Length >= 4) d.TryAdd(bare, canonical);
+        }
         return d;
     }
 
@@ -92,6 +111,14 @@ public static class TeamNameMapper
         foreach (var (_, canonical) in Aliases)
             d[Normalize(canonical)] = canonical;
         return d;
+    }
+
+    private static string StripKeySuffix(string key)
+    {
+        foreach (var suffix in new[] { "afc", "fc", "cf" })
+            if (key.Length > suffix.Length + 3 && key.EndsWith(suffix, StringComparison.Ordinal))
+                return key[..^suffix.Length];
+        return key;
     }
 
     private static string StripClubSuffix(string name)

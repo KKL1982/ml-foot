@@ -874,6 +874,14 @@ Il faut une clé gratuite de [football-data.org](https://www.football-data.org/)
  "FootballData":{"ApiKey":"VOTRE_CLE"}}
 ```
 
+**Cotes (recommandé pour la fiabilité).** Le modèle a été entraîné avec les cotes des bookmakers : sans elles, les prédictions sont peu fiables (beaucoup de « 2 »). Avec une clé gratuite de [the-odds-api.com](https://the-odds-api.com/), « Récupérer et prédire » ajoute les cotes (Bet365/Pinnacle si disponibles, sinon la moyenne du marché) et les écrit dans le CSV créé :
+
+```json
+{"OddsApi":{"ApiKey":"VOTRE_CLE_ODDS","CacheMinutes":60}}
+```
+
+Chaque championnat coûte 1 crédit par récupération ; `CacheMinutes` évite de consommer le quota (500 crédits/mois en gratuit). Les cotes n'existent que pour les matchs à venir proches : les autres sont prédits sans cotes et la page l'indique.
+
 Puis `docker compose up -d --force-recreate`. Équipes non reconnues : elles sont signalées sur la page ; ajoutez leur nom dans `TeamNameMapper.cs`. En ligne de commande, `coach refresh --input fichier.csv` (colonnes `Team,Coach[,Date][,League]`) importe des entraîneurs sans clé.
 
 ### Dev hint masqué en production

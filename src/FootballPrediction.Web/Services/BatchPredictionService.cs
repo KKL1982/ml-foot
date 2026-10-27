@@ -36,15 +36,26 @@ public class BatchPredictionService
         // (à venir, donc non joués) en appliquant les coachs à jour. On prédit
         // via IPredictionService sans passer par BuildFeatures (qui ne traite
         // que les matchs JOUÉS avec résultat — inadapté aux matchs à venir).
-        var inputs = matches.Select(m => new PredictionInputDto
+        var inputs = matches.Select(m =>
         {
-            Date = m.Date,
-            League = m.League,
-            Season = m.Season,
-            HomeTeam = m.HomeTeam,
-            AwayTeam = m.AwayTeam,
-            HomeCoach = _coachRepository?.GetCoach(m.HomeTeam, m.Date) ?? m.HomeCoach,
-            AwayCoach = _coachRepository?.GetCoach(m.AwayTeam, m.Date) ?? m.AwayCoach,
+            var bet365 = PickOdds(m, "Bet365", "Pinnacle");
+            var pinnacle = PickOdds(m, "Pinnacle", "Bet365");
+            return new PredictionInputDto
+            {
+                Date = m.Date,
+                League = m.League,
+                Season = m.Season,
+                HomeTeam = m.HomeTeam,
+                AwayTeam = m.AwayTeam,
+                HomeCoach = _coachRepository?.GetCoach(m.HomeTeam, m.Date) ?? m.HomeCoach,
+                AwayCoach = _coachRepository?.GetCoach(m.AwayTeam, m.Date) ?? m.AwayCoach,
+                Bet365Home = bet365 == null ? null : (double)bet365.HomeWin,
+                Bet365Draw = bet365 == null ? null : (double)bet365.Draw,
+                Bet365Away = bet365 == null ? null : (double)bet365.AwayWin,
+                PinnacleHome = pinnacle == null ? null : (double)pinnacle.HomeWin,
+                PinnacleDraw = pinnacle == null ? null : (double)pinnacle.Draw,
+                PinnacleAway = pinnacle == null ? null : (double)pinnacle.AwayWin,
+            };
         }).ToList();
 
         IReadOnlyList<PredictionOutputDto> preds;
@@ -106,6 +117,24 @@ public class BatchPredictionService
         }
 
         return items;
+    }
+
+    /// <summary>
+    /// Cotes du bookmaker préféré, sinon d'un bookmaker de repli, sinon la moyenne de ceux
+    /// disponibles (The Odds API ne propose pas toujours Bet365 ou Pinnacle).
+    /// </summary>
+    private static Odds? PickOdds(Match m, string preferred, string fallback)
+    {
+        if (m.BookmakerOdds.TryGetValue(preferred, out var o)) return o;
+        if (m.BookmakerOdds.TryGetValue(fallback, out o)) return o;
+        if (m.BookmakerOdds.Count == 0) return null;
+        return new Odds
+        {
+            Bookmaker = "Moyenne",
+            HomeWin = m.BookmakerOdds.Values.Average(x => x.HomeWin),
+            Draw = m.BookmakerOdds.Values.Average(x => x.Draw),
+            AwayWin = m.BookmakerOdds.Values.Average(x => x.AwayWin),
+        };
     }
 
     private static string ComputeBet(BatchPredictionItem item, double threshold)

@@ -139,7 +139,10 @@ public class BatchController : Controller
             return View("Index", model);
         }
 
-        var warnings = fetched.Errors.Concat(UnknownTeamWarnings(fetched.UnknownTeams)).ToList();
+        var warnings = fetched.Errors
+            .Concat(UnknownTeamWarnings(fetched.UnknownTeams))
+            .Concat(OddsWarnings(fetched))
+            .ToList();
         return await PredictFromFileAsync(fetched.FileName, warnings);
     }
 
@@ -240,6 +243,17 @@ public class BatchController : Controller
         To = DateTime.Today.AddDays(7),
         Files = _fileStore?.List() ?? Array.Empty<MatchFileInfo>()
     };
+
+    private static IEnumerable<string> OddsWarnings(MatchFetchResult fetched)
+    {
+        if (!fetched.OddsEnabled)
+            yield break;
+        foreach (var w in fetched.OddsWarnings)
+            yield return w;
+        if (fetched.OddsWarnings.Count == 0 && fetched.MatchesWithOdds < fetched.Matches.Count)
+            yield return $"Cotes trouvées pour {fetched.MatchesWithOdds} match(s) sur {fetched.Matches.Count} : " +
+                         "les autres sont prédits sans cotes (moins fiable).";
+    }
 
     private static IEnumerable<string> UnknownTeamWarnings(IReadOnlyList<string> unknown) =>
         unknown.Count == 0

@@ -12,7 +12,8 @@ namespace FootballPrediction.Application.Services;
 /// </summary>
 public static class MatchCsvWriter
 {
-    public const string Header = "Date,League,Season,HomeTeam,AwayTeam,HomeGoals,AwayGoals,Result,HomeCoach,AwayCoach";
+    public const string Header = "Date,League,Season,HomeTeam,AwayTeam,HomeGoals,AwayGoals,Result,HomeCoach,AwayCoach,"
+        + "Bet365_1,Bet365_X,Bet365_2,Pinnacle_1,Pinnacle_X,Pinnacle_2,WilliamHill_1,WilliamHill_X,WilliamHill_2";
 
     public static string ToCsv(IEnumerable<Match> matches)
     {
@@ -31,7 +32,8 @@ public static class MatchCsvWriter
                 m.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), Escape(m.League), Escape(m.Season),
                 Escape(m.HomeTeam), Escape(m.AwayTeam),
                 m.HomeGoals?.ToString() ?? "", m.AwayGoals?.ToString() ?? "",
-                result, Escape(m.HomeCoach), Escape(m.AwayCoach)));
+                result, Escape(m.HomeCoach), Escape(m.AwayCoach),
+                OddsCells(m, "Bet365"), OddsCells(m, "Pinnacle"), OddsCells(m, "WilliamHill")));
         }
         return sb.ToString();
     }
@@ -42,6 +44,16 @@ public static class MatchCsvWriter
         if (!string.IsNullOrEmpty(dir))
             Directory.CreateDirectory(dir);
         await File.WriteAllTextAsync(path, ToCsv(matches), new UTF8Encoding(false));
+    }
+
+    private static string OddsCells(Match m, string bookmaker)
+    {
+        if (!m.BookmakerOdds.TryGetValue(bookmaker, out var o))
+            return ",,";
+        return string.Join(",",
+            o.HomeWin.ToString(CultureInfo.InvariantCulture),
+            o.Draw.ToString(CultureInfo.InvariantCulture),
+            o.AwayWin.ToString(CultureInfo.InvariantCulture));
     }
 
     private static string Escape(string? value)
