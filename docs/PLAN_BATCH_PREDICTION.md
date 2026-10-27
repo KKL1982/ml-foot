@@ -252,3 +252,10 @@ Au lieu d'un simple tableau (équipes, date, résultat), le plan enrichit l'affi
 - `BatchPredictionService.Predict` prédit des matchs **à venir** (non joués) sans passer par `BuildFeatures` (qui ne traite que les matchs joués) — validé par test.
 - Le mode par défaut du Batch Web est passé en **Multiclass** (1/X/2 + coachs + bet), contrairement à l'ancien chemin binary. La vue gère déjà les deux modes.
 - Le parsing de date du CSV préexistant (format `DD/MM/YYYY`) tombe sur `0001-01-01` pour certains CSV — bug **préexistant**, hors périmètre (non introduit par ce chantier).
+
+## 9. Compléments (octobre 2026) — récupération en ligne
+
+Écarts du plan comblés : `coach refresh --input <csv>` (CLI), `GET /api/batch/predict`, choix des championnats sur la page Batch.
+Ajouts : client football-data.org (`FootballDataClient`), `TeamNameMapper` (noms API → noms du CSV), `MatchFetchService` / `MatchFileStore` (CSV créés dans `data/matches/` et réutilisés pour la prédiction), `CoachRefreshService`, boutons « Actualiser les noms des entraîneurs » et « Récupérer et prédire ». Persistance de `app.db` et `coaches.json` dans `/app/data`. Correctif : CSV de prédictions en culture invariante (virgule décimale française).
+Tests : 28 (ML) + 108 = 136 verts.
+

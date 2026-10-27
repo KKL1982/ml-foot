@@ -1,11 +1,110 @@
+@model FootballPrediction.Web.Models.BatchIndexViewModel
 @{
-    ViewData["Title"] = "CSV Upload";
+    ViewData["Title"] = "Batch Prediction";
 }
 
-<div class="page-title">Batch CSV Prediction</div>
+<div class="page-title">Batch Prediction</div>
+
+@if (!string.IsNullOrEmpty(Model.Error))
+{
+    <div class="card" style="border-left:3px solid var(--red);margin-bottom:16px;font-size:13px">&#9888;&#65039; @Model.Error</div>
+}
 
 <div class="card">
-    <div class="card-header">&#128193; Upload Match Data</div>
+    <div class="card-header">&#128260; Entraîneurs</div>
+    <p style="color:var(--tx2);font-size:12px;margin-bottom:14px">
+        Récupère l'entraîneur actuel de chaque équipe des 4 championnats. Les changements sont pris en compte dans les prédictions suivantes.
+    </p>
+    <form asp-action="RefreshCoaches" method="post">
+        <button type="submit" class="btn btn-green btn-lg" style="width:100%">&#128260; Actualiser les noms des entraîneurs</button>
+    </form>
+
+    @if (Model.CoachRefresh != null)
+    {
+        var r = Model.CoachRefresh;
+        <div style="margin-top:16px;font-size:13px">
+            <strong>@r.Changed.Count</strong> changement(s), @r.Unchanged inchangé(s).
+            @foreach (var err in r.Errors)
+            {
+                <div style="color:var(--red);margin-top:6px">&#9888;&#65039; @err</div>
+            }
+            @if (r.UnknownTeams.Count > 0)
+            {
+                <div style="color:var(--tx2);margin-top:6px">Équipes non reconnues : @string.Join(", ", r.UnknownTeams)</div>
+            }
+            @if (r.Changed.Count > 0)
+            {
+                <table style="width:100%;margin-top:10px;font-size:12px;border-collapse:collapse">
+                    <thead><tr style="text-align:left;color:var(--tx2)"><th>Équipe</th><th>Avant</th><th>Maintenant</th></tr></thead>
+                    <tbody>
+                    @foreach (var c in r.Changed)
+                    {
+                        <tr><td>@c.Team</td><td>@(c.PreviousCoach ?? "—")</td><td><strong>@c.NewCoach</strong></td></tr>
+                    }
+                    </tbody>
+                </table>
+            }
+        </div>
+    }
+</div>
+
+<div class="card">
+    <div class="card-header">&#128197; Récupérer les matchs d'une période</div>
+    <form asp-action="FetchMatches" method="post">
+        <div class="form-group">
+            <label class="form-label">Championnats</label>
+            <div>
+                @foreach (var c in Model.Championships)
+                {
+                    <label style="margin-right:16px;font-size:13px">
+                        <input type="checkbox" name="leagues" value="@c.Code" checked /> @c.Name
+                    </label>
+                }
+            </div>
+        </div>
+        <div class="form-grid">
+            <div class="form-group">
+                <label class="form-label">Du</label>
+                <input type="date" name="from" class="form-control" value="@Model.From.ToString("yyyy-MM-dd")" required />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Au</label>
+                <input type="date" name="to" class="form-control" value="@Model.To.ToString("yyyy-MM-dd")" required />
+            </div>
+        </div>
+        <button type="submit" class="btn btn-green btn-lg" style="width:100%;margin-top:10px">&#9889; Récupérer et prédire</button>
+    </form>
+</div>
+
+@if (Model.Files.Count > 0)
+{
+    <div class="card">
+        <div class="card-header">&#128193; CSV déjà créés</div>
+        <table style="width:100%;font-size:12px;border-collapse:collapse">
+            <thead><tr style="text-align:left;color:var(--tx2)"><th>Fichier</th><th>Créé le</th><th>Matchs</th><th></th></tr></thead>
+            <tbody>
+            @foreach (var f in Model.Files)
+            {
+                <tr>
+                    <td>@f.FileName</td>
+                    <td>@f.CreatedUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                    <td>@f.MatchCount</td>
+                    <td style="text-align:right;white-space:nowrap">
+                        <form asp-action="PredictFile" method="post" style="display:inline">
+                            <input type="hidden" name="fileName" value="@f.FileName" />
+                            <button type="submit" class="btn btn-green btn-sm">Prédire à nouveau</button>
+                        </form>
+                        <a class="btn btn-outline btn-sm" href="/Batch/DownloadFile?fileName=@Uri.EscapeDataString(f.FileName)">Télécharger</a>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}
+
+<div class="card">
+    <div class="card-header">&#128193; Ou importer votre propre CSV</div>
     <form asp-action="Upload" method="post" enctype="multipart/form-data">
         <div asp-validation-summary="All" style="color:var(--red);font-size:12px;margin-bottom:16px"></div>
         <div class="upload-zone" id="uploadZone">

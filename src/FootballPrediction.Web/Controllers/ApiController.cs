@@ -1,5 +1,6 @@
 using FootballPrediction.Application.DTOs;
 using FootballPrediction.Application.Interfaces;
+using FootballPrediction.Application.Services;
 using FootballPrediction.Web.Models;
 using FootballPrediction.Web.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -17,13 +18,16 @@ public class ApiController : ControllerBase
     private readonly BatchPredictionService _batchPredictionService;
     private readonly ModelSettings _settings;
     private readonly ILogger<ApiController> _logger;
+    private readonly MatchFetchService? _matchFetchService;
 
     public ApiController(
         IPredictionService predictionService,
         BatchPredictionService batchPredictionService,
         IOptions<ModelSettings> options,
-        ILogger<ApiController> logger)
+        ILogger<ApiController> logger,
+        MatchFetchService? matchFetchService = null)
     {
+        _matchFetchService = matchFetchService;
         _predictionService = predictionService;
         _batchPredictionService = batchPredictionService;
         _settings = options.Value;
@@ -119,5 +123,25 @@ public class ApiController : ControllerBase
         var items = _batchPredictionService.Predict(matches, threshold: 0.5);
         _logger.LogInformation("API batch: {Count} matches predicted", items.Count);
         return Ok(items);
+    }
+
+    /// <summary>
+    /// Récupère les matchs d'une période (championnats séparés par des virgules, ex.
+    /// league=PL,LL) depuis la source externe et retourne leurs prédictions.
+    /// </summary>
+    [HttpGet("batch/predict")]
+    public async Task<ActionResult<IReadOnlyList<BatchPredictionItem>>> PredictBatchByPeriod(
+        [FromQuery] string league, [FromQuery] DateTime from, [FromQuery] DateTime to, CancellationToken ct)
+    {
+        if (_matchFetchService == null)
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, "Récupération des matchs indisponible.");
+        if (string.IsNullOrWhiteSpace(league) || to < from || (to - from).TotalDays > 31)
+            return BadRequest("Paramètres invalides : league, from <= to, période de 31 jours maximum.");
+
+        var fetched = await _matchFetchService.FetchAsync(league.Split(',', StringSplitOptions.RemoveEmptyEntries), from, to, ct);
+        if (fetched.Matches.Count == 0 && fetched.Errors.Count > 0)
+            return StatusCode(StatusCodes.Status502BadGateway, string.Join(" — ", fetched.Errors));
+
+        return Ok(_batchPredictionService.Predict(fetched.Matches, threshold: 0.5));
     }
 }

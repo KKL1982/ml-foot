@@ -71,8 +71,14 @@ class Program
         coachList.AddOption(coachListLeague);
         coachList.SetHandler(CoachListAsync, coachListLeague);
 
+        var coachRefresh = new Command("refresh", "Import coaches from a CSV (columns: Team,Coach[,Date][,League])");
+        var coachRefreshInput = new Option<string>("--input", "CSV of current coaches") { IsRequired = true };
+        coachRefresh.AddOption(coachRefreshInput);
+        coachRefresh.SetHandler(CoachRefreshAsync, coachRefreshInput);
+
         coachCommand.AddCommand(coachUpdate);
         coachCommand.AddCommand(coachList);
+        coachCommand.AddCommand(coachRefresh);
 
         // ── load-matches command ──
         var loadMatches = new Command("load-matches", "Load championship matches (to predict) to a CSV");
@@ -320,6 +326,33 @@ class Program
                 continue;
             Console.WriteLine($"{team,-20} {current.Coach,-20} {current.EffectiveFrom:yyyy-MM-dd}");
         }
+    }
+
+    static void CoachRefreshAsync(string input)
+    {
+        if (!File.Exists(input)) { Console.Error.WriteLine($"Error: File not found: {input}"); return; }
+
+        var updates = new List<CoachUpdate>();
+        using (var reader = new StreamReader(input))
+        using (var csv = new CsvHelper.CsvReader(reader, System.Globalization.CultureInfo.InvariantCulture))
+        {
+            csv.Read();
+            csv.ReadHeader();
+            while (csv.Read())
+            {
+                var team = csv.GetField("Team");
+                var coach = csv.GetField("Coach");
+                if (string.IsNullOrWhiteSpace(team) || string.IsNullOrWhiteSpace(coach)) continue;
+                var dateText = csv.TryGetField<string>("Date", out var d) ? d : null;
+                var date = DateTime.TryParse(dateText, System.Globalization.CultureInfo.InvariantCulture,
+                    System.Globalization.DateTimeStyles.None, out var parsed) ? parsed : DateTime.Today;
+                var league = csv.TryGetField<string>("League", out var l) ? l : null;
+                updates.Add(new CoachUpdate { Team = team, Coach = coach, EffectiveFrom = date, League = string.IsNullOrWhiteSpace(league) ? null : league });
+            }
+        }
+
+        var applied = new CoachService(OpenCoachRepo()).UpdateRange(updates);
+        Console.WriteLine($"✅ {applied} entraîneur(s) importé(s) depuis {input}");
     }
 
     static async Task LoadMatchesAsync(string league, string input, string outFile)

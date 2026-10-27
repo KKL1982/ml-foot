@@ -854,7 +854,27 @@ Le seed est configurable dans `appsettings.json` et surchargeable en production 
 {"AdminSeed":{"Email":"votre@email.com","Password":"VotreMdpComplexe!"}}
 ```
 
-Le seed ne s'exécute que si l'utilisateur n'existe pas déjà.
+Au démarrage, l'application aligne le compte admin sur cette configuration : elle le crée s'il n'existe pas, et **remplace son mot de passe s'il diffère** de `AdminSeed:Password`. Le résultat est visible dans les logs (`docker compose logs football-prediction | grep AdminSeed`) : compte créé, déjà à jour, mot de passe mis à jour, ou échec avec la raison (règles : 8 caractères, 1 majuscule, 1 minuscule, 1 chiffre).
+
+### Persistance (base utilisateurs et entraîneurs)
+
+`docker-compose.yml` place `app.db` (comptes) et `coaches.json` (entraîneurs) dans `./data` (monté en `/app/data`), ainsi que les CSV de matchs créés (`./data/matches/`). Ils survivent aux `docker compose down` et `--build`. Si le conteneur ne peut pas écrire : `chmod -R a+rwX data`.
+
+### Matchs d'une période et entraîneurs à jour (football-data.org)
+
+La page **Batch** propose :
+- **Actualiser les noms des entraîneurs** : récupère l'entraîneur actuel des 4 championnats et n'enregistre que les changements.
+- **Récupérer et prédire** : récupère les matchs d'une période (31 jours max), crée un CSV dans `data/matches/` et prédit directement à partir de ce fichier. Les CSV créés sont listés (« Prédire à nouveau » après une mise à jour des entraîneurs, « Télécharger »).
+- API : `GET /api/batch/predict?league=PL,LL&from=2026-11-01&to=2026-11-07`.
+
+Il faut une clé gratuite de [football-data.org](https://www.football-data.org/) dans `appsettings.Production.json` :
+
+```json
+{"AdminSeed":{"Email":"votre@email.com","Password":"VotreMdpComplexe!"},
+ "FootballData":{"ApiKey":"VOTRE_CLE"}}
+```
+
+Puis `docker compose up -d --force-recreate`. Équipes non reconnues : elles sont signalées sur la page ; ajoutez leur nom dans `TeamNameMapper.cs`. En ligne de commande, `coach refresh --input fichier.csv` (colonnes `Team,Coach[,Date][,League]`) importe des entraîneurs sans clé.
 
 ### Dev hint masqué en production
 

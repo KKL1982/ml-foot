@@ -32,3 +32,6 @@ obj/
 ## Ignore NuGet packages
 packages/
 *.nupkg
+
+## CSV de matchs créés par l application (récupération en ligne)
+**/data/matches/

@@ -12,6 +12,18 @@
 
 <div class="page-title">Batch Prediction Results</div>
 
+@foreach (var warning in Model.Warnings)
+{
+    <div class="card" style="border-left:3px solid var(--amber,#f5a524);margin-bottom:12px;font-size:13px">&#9888;&#65039; @warning</div>
+}
+@if (!string.IsNullOrEmpty(Model.SourceFileName))
+{
+    <div style="color:var(--tx2);font-size:12px;margin-bottom:12px">
+        Matchs lus depuis <strong>@Model.SourceFileName</strong> —
+        <a href="/Batch/DownloadFile?fileName=@Uri.EscapeDataString(Model.SourceFileName)">télécharger ce CSV</a>
+    </div>
+}
+
 <div class="kpi-grid">
     <div class="kpi-card kpi-blue">
         <div class="kpi-header">📁 Matches Processed</div>

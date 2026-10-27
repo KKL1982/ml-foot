@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using FootballPrediction.Application.DTOs;
 
@@ -20,12 +21,12 @@ public static class BatchResultFormatter
         foreach (var i in items)
         {
             sb.AppendLine(string.Join(",",
-                i.Date.ToString("yyyy-MM-dd"), Escape(i.League),
+                i.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), Escape(i.League),
                 Escape(i.HomeTeam), Escape(i.AwayTeam),
                 Escape(i.HomeCoach), Escape(i.AwayCoach),
                 Escape(i.PredictedResult),
-                i.Probability1.ToString("F3"), i.ProbabilityX.ToString("F3"), i.Probability2.ToString("F3"),
-                i.Confidence.ToString("F3"), i.Bet, Escape(i.Comment)));
+                i.Probability1.ToString("F3", CultureInfo.InvariantCulture), i.ProbabilityX.ToString("F3", CultureInfo.InvariantCulture), i.Probability2.ToString("F3", CultureInfo.InvariantCulture),
+                i.Confidence.ToString("F3", CultureInfo.InvariantCulture), i.Bet, Escape(i.Comment)));
         }
         return sb.ToString();
     }
@@ -39,7 +40,7 @@ public static class BatchResultFormatter
 
         var rows = items.Select(i => new string[]
         {
-            i.Date.ToString("yyyy-MM-dd"), Truncate(i.League, widths[1]),
+            i.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), Truncate(i.League, widths[1]),
             Truncate(i.HomeTeam, widths[2]), Truncate(i.AwayTeam, widths[3]),
             Truncate(i.HomeCoach, widths[4]), Truncate(i.AwayCoach, widths[5]),
             i.PredictedResult, i.Probability1.ToString("P0"), i.ProbabilityX.ToString("P0"),

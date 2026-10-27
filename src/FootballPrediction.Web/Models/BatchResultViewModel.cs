@@ -7,5 +7,11 @@ public class BatchResultViewModel
     public int SuccessfulPredictions { get; set; }
     public string? DownloadFileName { get; set; }
 
+    /// <summary>Nom du CSV de matchs créé et utilisé pour cette prédiction (si récupéré en ligne).</summary>
+    public string? SourceFileName { get; set; }
+
+    /// <summary>Avertissements à afficher (équipes non reconnues, championnats en erreur...).</summary>
+    public IReadOnlyList<string> Warnings { get; set; } = Array.Empty<string>();
+
     public bool HasDownload => !string.IsNullOrEmpty(DownloadFileName);
 }

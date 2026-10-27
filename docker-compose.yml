@@ -11,4 +11,6 @@ services:
     environment:
       - ASPNETCORE_URLS=http://+:7575
       - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=Data Source=/app/data/app.db
+      - COACH_DB=/app/data/coaches.json
     restart: unless-stopped
