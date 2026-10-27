@@ -251,8 +251,14 @@ public class BatchController : Controller
         foreach (var w in fetched.OddsWarnings)
             yield return w;
         if (fetched.OddsWarnings.Count == 0 && fetched.MatchesWithOdds < fetched.Matches.Count)
-            yield return $"Cotes trouvées pour {fetched.MatchesWithOdds} match(s) sur {fetched.Matches.Count} : " +
-                         "les autres sont prédits sans cotes (moins fiable).";
+        {
+            var names = fetched.MatchesWithoutOdds;
+            var shown = string.Join(", ", names.Take(8)) + (names.Count > 8 ? $" … (+{names.Count - 8})" : "");
+            yield return $"Cotes trouvées pour {fetched.MatchesWithOdds} match(s) sur {fetched.Matches.Count}. " +
+                         (names.Count > 0
+                             ? $"Prédits sans cotes (moins fiable) : {shown}."
+                             : "Les autres sont prédits sans cotes (moins fiable).");
+        }
     }
 
     private static IEnumerable<string> UnknownTeamWarnings(IReadOnlyList<string> unknown) =>

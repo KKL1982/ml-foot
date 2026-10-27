@@ -465,3 +465,18 @@ a { color: inherit; }
     .header-title { font-size: 14px; }
     .feature-grid { grid-template-columns: 1fr; }
 }
+
+/* Tri du tableau de résultats (tactile : cibles de 44px) */
+.sort-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 12px; }
+.sort-bar[hidden] { display: none; }
+.sort-bar label { font-size: 12px; color: var(--tx2); }
+.sort-bar .form-select { width: auto; min-width: 180px; flex: 1 1 180px; max-width: 280px; min-height: 44px; }
+.sort-bar .btn { min-height: 44px; }
+.table th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
+.table th.sortable:hover { color: var(--tx); }
+.table th.sorted-asc::after { content: " \25B2"; font-size: 9px; }
+.table th.sorted-desc::after { content: " \25BC"; font-size: 9px; }
+@media (max-width: 480px) {
+    .sort-bar .form-select { max-width: none; flex-basis: 100%; }
+    .sort-bar .btn { flex: 1 1 auto; }
+}

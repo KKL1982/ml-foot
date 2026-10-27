@@ -13,6 +13,8 @@ public sealed class MatchFetchResult
     public IReadOnlyList<string> Errors { get; init; } = Array.Empty<string>();
     /// <summary>Nombre de matchs pour lesquels des cotes ont été trouvées.</summary>
     public int MatchesWithOdds { get; init; }
+    /// <summary>Matchs sans cotes, au format « Domicile – Extérieur (jj/MM) ».</summary>
+    public IReadOnlyList<string> MatchesWithoutOdds { get; init; } = Array.Empty<string>();
     /// <summary>Vrai si une source de cotes est configurée.</summary>
     public bool OddsEnabled { get; init; }
     /// <summary>Problèmes de cotes (clé absente, quota...) : la prédiction continue sans.</summary>
@@ -47,6 +49,7 @@ public sealed class MatchFetchService
         var errors = new List<string>();
         var oddsWarnings = new List<string>();
         var withOdds = 0;
+        var withoutOdds = new List<string>();
 
         foreach (var code in codes)
         {
@@ -76,6 +79,9 @@ public sealed class MatchFetchService
                 {
                     var odds = await _oddsSource.GetUpcomingOddsAsync(code, ct);
                     withOdds += AttachOdds(leagueMatches, odds);
+                    withoutOdds.AddRange(leagueMatches
+                        .Where(m => m.BookmakerOdds.Count == 0)
+                        .Select(m => $"{m.HomeTeam} – {m.AwayTeam} ({m.Date:dd/MM})"));
                 }
                 catch (FootballDataException ex)
                 {
@@ -101,6 +107,7 @@ public sealed class MatchFetchService
             UnknownTeams = unknown.ToList(),
             Errors = errors,
             MatchesWithOdds = withOdds,
+            MatchesWithoutOdds = withoutOdds,
             OddsEnabled = _oddsSource != null,
             OddsWarnings = oddsWarnings
         };

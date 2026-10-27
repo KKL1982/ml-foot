@@ -82,15 +82,7 @@ public class PredictionService : IPredictionService
             : p1 >= pX && p1 >= p2 ? "1" : pX >= p1 && pX >= p2 ? "X" : "2";
 
         double conf = Math.Max(p1, Math.Max(pX, p2));
-        string comment = p1 switch
-        {
-            > 0.6f when pred.PredictedResult == "1" => "Strong home favorite",
-            > 0.6f when pred.PredictedResult == "2" => "Strong away favorite",
-            > 0.5f when pred.PredictedResult == "1" => "Home win likely",
-            > 0.5f when pred.PredictedResult == "2" => "Away win likely",
-            > 0.4f => "Balanced match",
-            _ => "Highly uncertain"
-        };
+        string comment = DescribeOutcome(result, conf);
 
         return new PredictionOutputDto
         {
@@ -105,6 +97,20 @@ public class PredictionService : IPredictionService
             Confidence = Math.Round(conf, 3),
             Comment = comment
         };
+    }
+
+    /// <summary>
+    /// Commentaire basé sur le résultat prédit et sa probabilité (la plus forte des trois) :
+    /// ≥ 70 % favori net, ≥ 55 % résultat probable, sinon match équilibré.
+    /// </summary>
+    public static string DescribeOutcome(string result, double confidence)
+    {
+        var side = result switch { "1" => "home", "2" => "away", _ => "draw" };
+        if (confidence >= 0.70)
+            return side == "draw" ? "Draw very likely" : $"Strong {side} favorite";
+        if (confidence >= 0.55)
+            return side == "draw" ? "Draw likely" : $"{char.ToUpper(side[0])}{side[1..]} win likely";
+        return "Balanced match";
     }
 
     private static double CalculateHomeProbFromOdds(PredictionInputDto input)

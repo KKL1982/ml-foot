@@ -76,30 +76,36 @@
             <a href="/batch" class="btn btn-outline btn-sm">New Upload</a>
         </div>
     </div>
+    <div class="sort-bar" id="sortBar" hidden>
+        <label for="sortSelect">Trier par</label>
+        <select id="sortSelect" class="form-select"></select>
+        <button type="button" id="sortDir" class="btn btn-outline btn-sm" aria-label="Inverser l'ordre">↑ Croissant</button>
+        <button type="button" id="sortReset" class="btn btn-outline btn-sm">Ordre initial</button>
+    </div>
     <div class="table-wrap">
-        <table class="table">
+        <table class="table" id="resultTable">
             <thead>
                 <tr>
-                    <th>Date</th>
-                    <th>League</th>
-                    <th>Home</th>
-                    <th>Away</th>
-                    <th>HomeCoach</th>
-                    <th>AwayCoach</th>
-                    <th>Bet</th>
+                    <th data-key="date" data-label="Date">Date</th>
+                    <th data-key="league" data-label="Championnat">League</th>
+                    <th data-key="home" data-label="Domicile">Home</th>
+                    <th data-key="away" data-label="Extérieur">Away</th>
+                    <th data-key="hcoach" data-label="Coach domicile">HomeCoach</th>
+                    <th data-key="acoach" data-label="Coach extérieur">AwayCoach</th>
+                    <th data-key="bet" data-label="Pari">Bet</th>
                     @if (isBinary)
                     {
-                        <th>HomeProb</th>
-                        <th>Conf</th>
+                        <th data-key="p1" data-type="num" data-label="Proba domicile">HomeProb</th>
+                        <th data-key="conf" data-type="num" data-label="Confiance">Conf</th>
                     }
                     else
                     {
-                        <th>1</th>
-                        <th>X</th>
-                        <th>2</th>
-                        <th>Conf</th>
+                        <th data-key="p1" data-type="num" data-label="Proba 1">1</th>
+                        <th data-key="px" data-type="num" data-label="Proba X">X</th>
+                        <th data-key="p2" data-type="num" data-label="Proba 2">2</th>
+                        <th data-key="conf" data-type="num" data-label="Confiance">Conf</th>
                     }
-                    <th>Comment</th>
+                    <th data-key="comment" data-label="Commentaire">Comment</th>
                 </tr>
             </thead>
             <tbody>
@@ -110,7 +116,7 @@
                         : (p.PredictedResult switch { "1" => "badge-1", "X" => "badge-X", "2" => "badge-2", _ => "" });
                     string confClass = p.Confidence >= 0.6 ? "conf-high" : p.Confidence >= 0.45 ? "conf-med" : "conf-low";
                     <tr>
-                        <td>@p.Date.ToString("yyyy-MM-dd")</td>
+                        <td data-v="@p.Date.ToString("yyyy-MM-dd")">@p.Date.ToString("yyyy-MM-dd")</td>
                         <td>@p.League</td>
                         <td>@p.HomeTeam</td>
                         <td>@p.AwayTeam</td>
@@ -119,15 +125,15 @@
                         <td><span class="badge @badgeClass">@p.PredictedResult</span></td>
                         @if (isBinary)
                         {
-                            <td>@p.HomeWinProbability.ToString("P0")</td>
-                            <td><span class="badge @confClass">@p.Confidence.ToString("P0")</span></td>
+                            <td data-v="@p.HomeWinProbability.ToString(System.Globalization.CultureInfo.InvariantCulture)">@p.HomeWinProbability.ToString("P0")</td>
+                            <td data-v="@p.Confidence.ToString(System.Globalization.CultureInfo.InvariantCulture)"><span class="badge @confClass">@p.Confidence.ToString("P0")</span></td>
                         }
                         else
                         {
-                            <td>@p.Probability1.ToString("P0")</td>
-                            <td>@p.ProbabilityX.ToString("P0")</td>
-                            <td>@p.Probability2.ToString("P0")</td>
-                            <td><span class="badge @confClass">@p.Confidence.ToString("P0")</span></td>
+                            <td data-v="@p.Probability1.ToString(System.Globalization.CultureInfo.InvariantCulture)">@p.Probability1.ToString("P0")</td>
+                            <td data-v="@p.ProbabilityX.ToString(System.Globalization.CultureInfo.InvariantCulture)">@p.ProbabilityX.ToString("P0")</td>
+                            <td data-v="@p.Probability2.ToString(System.Globalization.CultureInfo.InvariantCulture)">@p.Probability2.ToString("P0")</td>
+                            <td data-v="@p.Confidence.ToString(System.Globalization.CultureInfo.InvariantCulture)"><span class="badge @confClass">@p.Confidence.ToString("P0")</span></td>
                         }
                         <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="@p.Comment">@p.Comment</td>
                     </tr>
@@ -136,3 +142,90 @@
         </table>
     </div>
 </div>
+
+@section Scripts {
+<script>
+(function () {
+    var table = document.getElementById('resultTable');
+    if (!table || !table.tBodies.length) return;
+    var body = table.tBodies[0];
+    var heads = Array.prototype.slice.call(table.tHead.rows[0].cells);
+    var rows = Array.prototype.slice.call(body.rows);
+    rows.forEach(function (r, i) { r.dataset.i = i; });
+
+    var bar = document.getElementById('sortBar');
+    var select = document.getElementById('sortSelect');
+    var dirBtn = document.getElementById('sortDir');
+    var resetBtn = document.getElementById('sortReset');
+    var state = { col: -1, asc: true };
+
+    heads.forEach(function (th, i) {
+        var opt = document.createElement('option');
+        opt.value = i;
+        opt.textContent = th.dataset.label || th.textContent;
+        select.appendChild(opt);
+        th.classList.add('sortable');
+        th.setAttribute('tabindex', '0');
+        th.setAttribute('role', 'button');
+        th.addEventListener('click', function () { choose(i); });
+        th.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); choose(i); }
+        });
+    });
+    select.insertBefore(new Option('Ordre initial', -1), select.firstChild);
+    select.value = -1;
+    bar.hidden = false;
+
+    function value(row, col) {
+        var td = row.cells[col];
+        var v = td.dataset.v !== undefined ? td.dataset.v : td.textContent.trim();
+        return heads[col].dataset.type === 'num' ? parseFloat(v) : v;
+    }
+
+    function apply() {
+        var col = state.col;
+        var sorted = rows.slice();
+        if (col >= 0) {
+            var num = heads[col].dataset.type === 'num';
+            sorted.sort(function (a, b) {
+                var x = value(a, col), y = value(b, col), c;
+                if (num) c = (isNaN(x) ? -Infinity : x) - (isNaN(y) ? -Infinity : y);
+                else c = String(x).localeCompare(String(y), 'fr', { sensitivity: 'base', numeric: true });
+                if (c === 0) c = a.dataset.i - b.dataset.i;
+                return state.asc ? c : (c === 0 ? 0 : -c);
+            });
+        } else {
+            sorted.sort(function (a, b) { return a.dataset.i - b.dataset.i; });
+        }
+        sorted.forEach(function (r) { body.appendChild(r); });
+
+        heads.forEach(function (th, i) {
+            th.removeAttribute('aria-sort');
+            th.classList.remove('sorted-asc', 'sorted-desc');
+            if (i === col) {
+                th.setAttribute('aria-sort', state.asc ? 'ascending' : 'descending');
+                th.classList.add(state.asc ? 'sorted-asc' : 'sorted-desc');
+            }
+        });
+        select.value = col;
+        dirBtn.textContent = state.asc ? '↑ Croissant' : '↓ Décroissant';
+        dirBtn.disabled = col < 0;
+    }
+
+    function choose(col) {
+        if (col === state.col) state.asc = !state.asc;
+        else { state.col = col; state.asc = heads[col].dataset.type !== 'num'; }
+        apply();
+    }
+
+    select.addEventListener('change', function () {
+        state.col = parseInt(select.value, 10);
+        state.asc = state.col < 0 || heads[state.col].dataset.type !== 'num';
+        apply();
+    });
+    dirBtn.addEventListener('click', function () { if (state.col >= 0) { state.asc = !state.asc; apply(); } });
+    resetBtn.addEventListener('click', function () { state.col = -1; state.asc = true; apply(); });
+    apply();
+})();
+</script>
+}
