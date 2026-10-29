@@ -3,6 +3,7 @@ using FootballPrediction.Application.Services;
 using FootballPrediction.ML.Prediction;
 using FootballPrediction.Web.Models;
 using FootballPrediction.Web.Services;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -35,7 +36,14 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.AccessDeniedPath = "/Account/AccessDenied";
     options.ExpireTimeSpan = TimeSpan.FromDays(7);
     options.SlidingExpiration = true;
+    // Derrière le proxy HTTPS, le cookie ne doit jamais partir en clair (sauf en développement local).
+    options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
+        ? CookieSecurePolicy.SameAsRequest
+        : CookieSecurePolicy.Always;
 });
+
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+    ForwardedHeadersSetup.Configure(options, builder.Configuration[ForwardedHeadersSetup.KnownNetworksKey]));
 
 // Configuration
 builder.Services.Configure<ModelSettings>(
@@ -124,6 +132,7 @@ using (var scope = app.Services.CreateScope())
     await SeedAdminAsync(userManager, roleManager, seedOpts);
 }
 
+app.UseForwardedHeaders();
 app.UseStaticFiles();
 app.UseRouting();
 

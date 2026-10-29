@@ -13,4 +13,6 @@ services:
       - ASPNETCORE_ENVIRONMENT=Production
       - ConnectionStrings__DefaultConnection=Data Source=/app/data/app.db
       - COACH_DB=/app/data/coaches.json
+      # Facultatif : restreindre le proxy de confiance (défaut : plages privées Docker)
+      # - ForwardedHeaders__KnownNetworks=172.18.0.0/16
     restart: unless-stopped
