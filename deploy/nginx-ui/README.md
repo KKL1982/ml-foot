@@ -20,3 +20,8 @@
 ## Fail2ban
 Voir `../fail2ban/` : deux filtres (`prediction-auth`, `prediction-scan`) et un jail.
 `sudo fail2ban-regex /opt/nginx-ui/nginx/logs/prediction-access.log prediction-auth` permet de tester les filtres sur les logs réels.
+
+## Déploiement automatisé
+`sudo ./deploy/deploy.sh --domain prediction.<domaine>` (voir l'en-tête du script pour les options) :
+rattache le conteneur au réseau de nginx-ui, installe la conf nginx, recharge nginx et configure fail2ban.
+Prérequis : Docker Compose ≥ 2.24 (`docker compose version`), pour `ports: !reset []`.
