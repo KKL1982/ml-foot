@@ -79,7 +79,12 @@ if [[ $SKIP_NGINX -eq 0 ]]; then
   step "Configuration nginx pour $DOMAIN"
   mkdir -p "$CONF_DIR"
   TARGET="$CONF_DIR/prediction.conf"
-  [[ -f "$TARGET" ]] && cp "$TARGET" "$TARGET.bak"
+  # Sauvegarde HORS de conf.d : nginx-ui y charge tous les fichiers, un .bak y dupliquerait les limit_req_zone.
+  BACKUP_DIR=/var/backups/prediction-deploy
+  BACKUP="$BACKUP_DIR/prediction.conf.bak"
+  mkdir -p "$BACKUP_DIR"
+  rm -f "$BACKUP"
+  [[ -f "$TARGET" ]] && cp "$TARGET" "$BACKUP"
   sed -e "s#prediction\.dbdesignandcodereview\.com#$DOMAIN#g" \
       -e "s#/etc/letsencrypt/live/dbdesignandcodereview\.com/#/etc/letsencrypt/live/$CERT_DOMAIN/#g" \
       -e "s#http://football-prediction:7575#http://$CONTAINER:$PORT#" \
@@ -90,7 +95,7 @@ if [[ $SKIP_NGINX -eq 0 ]]; then
     echo "nginx rechargé."
   else
     echo "nginx -t a échoué : restauration de l'ancienne configuration." >&2
-    if [[ -f "$TARGET.bak" ]]; then mv "$TARGET.bak" "$TARGET"; else rm -f "$TARGET"; fi
+    if [[ -f "$BACKUP" ]]; then mv "$BACKUP" "$TARGET"; else rm -f "$TARGET"; fi
     exit 1
   fi
 
