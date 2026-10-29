@@ -68,7 +68,7 @@
 <div class="card">
     <div class="card-header" style="justify-content:space-between">
         <span>Predictions Table</span>
-        <div style="display:flex;gap:8px">
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
             @if (Model.HasDownload)
             {
                 <a href="/batch/download" class="btn btn-green btn-sm">📥 Download CSV</a>
@@ -116,26 +116,26 @@
                         : (p.PredictedResult switch { "1" => "badge-1", "X" => "badge-X", "2" => "badge-2", _ => "" });
                     string confClass = p.Confidence >= 0.6 ? "conf-high" : p.Confidence >= 0.45 ? "conf-med" : "conf-low";
                     <tr>
-                        <td data-v="@p.Date.ToString("yyyy-MM-dd")">@p.Date.ToString("yyyy-MM-dd")</td>
-                        <td>@p.League</td>
-                        <td>@p.HomeTeam</td>
-                        <td>@p.AwayTeam</td>
-                        <td>@(p.HomeCoach ?? "—")</td>
-                        <td>@(p.AwayCoach ?? "—")</td>
-                        <td><span class="badge @badgeClass">@p.PredictedResult</span></td>
+                        <td class="c-date" data-v="@p.Date.ToString("yyyy-MM-dd")">@p.Date.ToString("yyyy-MM-dd")</td>
+                        <td class="c-league">@p.League</td>
+                        <td class="c-home">@p.HomeTeam</td>
+                        <td class="c-away">@p.AwayTeam</td>
+                        <td class="c-hcoach" data-label="Dom.">@(p.HomeCoach ?? "—")</td>
+                        <td class="c-acoach" data-label="Ext.">@(p.AwayCoach ?? "—")</td>
+                        <td class="c-bet"><span class="badge badge-lg @badgeClass">@p.PredictedResult</span></td>
                         @if (isBinary)
                         {
-                            <td data-v="@p.HomeWinProbability.ToString(System.Globalization.CultureInfo.InvariantCulture)">@p.HomeWinProbability.ToString("P0")</td>
-                            <td data-v="@p.Confidence.ToString(System.Globalization.CultureInfo.InvariantCulture)"><span class="badge @confClass">@p.Confidence.ToString("P0")</span></td>
+                            <td class="c-p1" data-label="Dom." data-v="@p.HomeWinProbability.ToString(System.Globalization.CultureInfo.InvariantCulture)">@p.HomeWinProbability.ToString("P0")</td>
+                            <td class="c-conf" data-label="Conf." data-v="@p.Confidence.ToString(System.Globalization.CultureInfo.InvariantCulture)"><span class="badge @confClass">@p.Confidence.ToString("P0")</span></td>
                         }
                         else
                         {
-                            <td data-v="@p.Probability1.ToString(System.Globalization.CultureInfo.InvariantCulture)">@p.Probability1.ToString("P0")</td>
-                            <td data-v="@p.ProbabilityX.ToString(System.Globalization.CultureInfo.InvariantCulture)">@p.ProbabilityX.ToString("P0")</td>
-                            <td data-v="@p.Probability2.ToString(System.Globalization.CultureInfo.InvariantCulture)">@p.Probability2.ToString("P0")</td>
-                            <td data-v="@p.Confidence.ToString(System.Globalization.CultureInfo.InvariantCulture)"><span class="badge @confClass">@p.Confidence.ToString("P0")</span></td>
+                            <td class="c-p1" data-label="1" data-v="@p.Probability1.ToString(System.Globalization.CultureInfo.InvariantCulture)">@p.Probability1.ToString("P0")</td>
+                            <td class="c-px" data-label="X" data-v="@p.ProbabilityX.ToString(System.Globalization.CultureInfo.InvariantCulture)">@p.ProbabilityX.ToString("P0")</td>
+                            <td class="c-p2" data-label="2" data-v="@p.Probability2.ToString(System.Globalization.CultureInfo.InvariantCulture)">@p.Probability2.ToString("P0")</td>
+                            <td class="c-conf" data-label="Conf." data-v="@p.Confidence.ToString(System.Globalization.CultureInfo.InvariantCulture)"><span class="badge @confClass">@p.Confidence.ToString("P0")</span></td>
                         }
-                        <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="@p.Comment">@p.Comment</td>
+                        <td class="c-comment" title="@p.Comment">@p.Comment</td>
                     </tr>
                 }
             </tbody>
