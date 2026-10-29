@@ -532,7 +532,7 @@ a { color: inherit; }
         padding-top: 8px; border-top: 1px solid var(--brd); font-size: 12px; color: var(--tx2);
     }
 }
-@media (max-width: 480px) {
+@media (max-width: 600px) {
     .card-header { flex-wrap: wrap; gap: 8px; }
     /* Petits écrans : la couleur du badge suffit, on retire le libellé « Conf. » pour libérer de la largeur */
     .table td.c-conf::before { content: none; }
