@@ -3,6 +3,7 @@ using FootballPrediction.Application.Services;
 using FootballPrediction.ML.Prediction;
 using FootballPrediction.Web.Models;
 using FootballPrediction.Web.Services;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -22,6 +23,15 @@ builder.Services.AddSession(options =>
 });
 builder.Services.AddControllersWithViews().AddSessionStateTempDataProvider();
 builder.Services.AddControllers();
+
+// Clés de chiffrement des cookies/antiforgery persistées dans le volume data/ : sans cela, chaque
+// redéploiement du conteneur les régénère et déconnecte tous les utilisateurs.
+var keysPath = builder.Configuration["DataProtection:KeysPath"]
+    ?? Path.Combine(builder.Environment.ContentRootPath, "data", "keys");
+Directory.CreateDirectory(keysPath);
+builder.Services.AddDataProtection()
+    .SetApplicationName("football-prediction")
+    .PersistKeysToFileSystem(new DirectoryInfo(keysPath));
 
 // ── Identity + SQLite ──
 builder.Services.AddDbContext<AppDbContext>(options =>

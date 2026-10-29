@@ -153,6 +153,19 @@ public class BatchController : Controller
         return await PredictFromFileAsync(fileName, Array.Empty<string>());
     }
 
+    // Actions POST uniquement : un GET (ex. retour après reconnexion) revient simplement à la page Batch.
+    [HttpGet, ActionName("Upload")]
+    public IActionResult UploadGet() => RedirectToAction("Index");
+
+    [HttpGet, ActionName("RefreshCoaches")]
+    public IActionResult RefreshCoachesGet() => RedirectToAction("Index");
+
+    [HttpGet, ActionName("FetchMatches")]
+    public IActionResult FetchMatchesGet() => RedirectToAction("Index");
+
+    [HttpGet, ActionName("PredictFile")]
+    public IActionResult PredictFileGet() => RedirectToAction("Index");
+
     [HttpGet]
     public IActionResult DownloadFile(string fileName)
     {

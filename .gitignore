@@ -35,3 +35,4 @@ packages/
 
 ## CSV de matchs créés par l application (récupération en ligne)
 **/data/matches/
+**/data/keys/

@@ -112,6 +112,18 @@ public class BatchControllerTests
     }
 
     [Fact]
+    public void PostOnlyActions_Get_RedirectToIndex()
+    {
+        var controller = CreateController();
+        new IActionResult[]
+        {
+            controller.UploadGet(), controller.RefreshCoachesGet(),
+            controller.FetchMatchesGet(), controller.PredictFileGet()
+        }.Should().AllSatisfy(r => r.Should().BeOfType<RedirectToActionResult>()
+            .Which.ActionName.Should().Be("Index"));
+    }
+
+    [Fact]
     public void Download_ShouldReturnCsvFile()
     {
         var controller = CreateController();
