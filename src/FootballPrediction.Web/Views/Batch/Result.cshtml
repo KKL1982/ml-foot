@@ -8,6 +8,8 @@
     int count1 = Model.Predictions.Count(p => p.PredictedResult == "1");
     int count2 = Model.Predictions.Count(p => p.PredictedResult == "2");
     bool isBinary = Model.Predictions.Any(p => p.Mode == "Binary");
+    // Modèle binaire (domicile/extérieur) : le nul vaut toujours 0 %, on masque alors la colonne X.
+    bool hasDraw = Model.Predictions.Any(p => p.ProbabilityX > 0 || p.PredictedResult == "X");
 }
 
 <div class="page-title">Batch Prediction Results</div>
@@ -50,12 +52,15 @@
             {
                 <span style="color:var(--green)">@count1</span>
                 <text> / </text>
-                <span style="color:var(--yellow)">@countX</span>
-                <text> / </text>
+                @if (hasDraw)
+                {
+                    <span style="color:var(--yellow)">@countX</span>
+                    <text> / </text>
+                }
                 <span style="color:var(--blue)">@count2</span>
             }
         </div>
-        <div class="kpi-sub">@(isBinary ? "HOME — AWAY — SKIP" : "1 — X — 2")</div>
+        <div class="kpi-sub">@(isBinary ? "HOME — AWAY — SKIP" : hasDraw ? "1 — X — 2" : "1 — 2")</div>
     </div>
     <div class="kpi-card">
         <div class="kpi-header">📈 Avg Confidence</div>
@@ -101,7 +106,10 @@
                     else
                     {
                         <th data-key="p1" data-type="num" data-label="Proba 1">1</th>
-                        <th data-key="px" data-type="num" data-label="Proba X">X</th>
+                        @if (hasDraw)
+                        {
+                            <th data-key="px" data-type="num" data-label="Proba X">X</th>
+                        }
                         <th data-key="p2" data-type="num" data-label="Proba 2">2</th>
                         <th data-key="conf" data-type="num" data-label="Confiance">Conf</th>
                     }
@@ -131,7 +139,10 @@
                         else
                         {
                             <td class="c-p1" data-label="1" data-v="@p.Probability1.ToString(System.Globalization.CultureInfo.InvariantCulture)">@p.Probability1.ToString("P0")</td>
-                            <td class="c-px" data-label="X" data-v="@p.ProbabilityX.ToString(System.Globalization.CultureInfo.InvariantCulture)">@p.ProbabilityX.ToString("P0")</td>
+                            @if (hasDraw)
+                            {
+                                <td class="c-px" data-label="X" data-v="@p.ProbabilityX.ToString(System.Globalization.CultureInfo.InvariantCulture)">@p.ProbabilityX.ToString("P0")</td>
+                            }
                             <td class="c-p2" data-label="2" data-v="@p.Probability2.ToString(System.Globalization.CultureInfo.InvariantCulture)">@p.Probability2.ToString("P0")</td>
                             <td class="c-conf" data-label="Conf." data-v="@p.Confidence.ToString(System.Globalization.CultureInfo.InvariantCulture)"><span class="badge @confClass">@p.Confidence.ToString("P0")</span></td>
                         }

@@ -47,6 +47,7 @@
                 <a href="/Account/Login" class="btn btn-outline btn-sm" style="width:100%">🔑 Sign In</a>
             }
             <div style="margin-top:8px">&copy; @DateTime.Now.Year Football AI</div>
+            <div style="margin-top:6px"><span class="version-badge" title="Version déployée">v @FootballPrediction.Web.Services.AppVersion.Label</span></div>
         </div>
     </aside>
 
@@ -54,6 +55,7 @@
     <header class="header">
         <button class="header-menu" onclick="document.getElementById('sidebar').classList.toggle('open')">&#9776;</button>
         <div class="header-title">@ViewData["Title"]</div>
+        <span class="version-badge header-version" title="Version déployée">@FootballPrediction.Web.Services.AppVersion.Commit</span>
         <div class="header-meta">
             <span>&#128197; @DateTime.Now.ToString("dd MMM yyyy")</span>
             <span>&#129504; Model active</span>

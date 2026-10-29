@@ -36,6 +36,12 @@ RUN mkdir -p /app/data && \
 
 USER app
 
+# Version déployée affichée dans l'interface (passée par docker-compose / deploy.sh)
+ARG GIT_SHA=dev
+ARG BUILD_DATE=
+ENV APP_VERSION=$GIT_SHA
+ENV APP_BUILD_DATE=$BUILD_DATE
+
 ENV ASPNETCORE_URLS=http://+:7575
 ENV ASPNETCORE_ENVIRONMENT=Production
 

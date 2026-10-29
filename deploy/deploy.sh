@@ -71,6 +71,10 @@ networks:
 YML
 
   step "Build et démarrage"
+  # Version affichée dans l'interface : commit court (+ -dirty si modifications locales) et date du commit
+  export GIT_SHA="$(git rev-parse --short HEAD)$(git diff --quiet HEAD -- 2>/dev/null || echo -dirty)"
+  export BUILD_DATE="$(git log -1 --format=%cd --date=short)"
+  echo "Version : $GIT_SHA ($BUILD_DATE)"
   docker compose up -d --build
 fi
 
