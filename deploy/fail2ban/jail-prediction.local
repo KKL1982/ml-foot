@@ -1,0 +1,29 @@
+# À placer dans /etc/fail2ban/jail.d/prediction.local (sur l'HÔTE), puis : sudo fail2ban-client reload
+#
+# nginx-ui tourne dans Docker avec 443 publié : les bans doivent viser la chaîne DOCKER-USER,
+# la chaîne INPUT (par défaut) ne protège pas les ports publiés par Docker.
+# logpath : fichier de l'HÔTE correspondant à /etc/nginx/logs/prediction-access.log du conteneur
+# (à vérifier : docker inspect nginx-ui --format '{{json .Mounts}}').
+
+[prediction-auth]
+enabled   = true
+filter    = prediction-auth
+logpath   = /opt/nginx-ui/nginx/logs/prediction-access.log
+port      = http,https
+chain     = DOCKER-USER
+maxretry  = 5
+findtime  = 10m
+bantime   = 1h
+# ignoreip volontairement non défini (connexions depuis plusieurs lieux / mobile, IP variables).
+# En cas de ban par erreur, en SSH : sudo fail2ban-client unban --all
+# ignoreip = 127.0.0.1/8 ::1 <IP fixe>
+
+[prediction-scan]
+enabled   = true
+filter    = prediction-scan
+logpath   = /opt/nginx-ui/nginx/logs/prediction-access.log
+port      = http,https
+chain     = DOCKER-USER
+maxretry  = 20
+findtime  = 10m
+bantime   = 6h

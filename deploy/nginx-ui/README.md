@@ -16,3 +16,7 @@
    ```
 3. Copier `prediction.conf` dans `/opt/nginx-ui/nginx/conf.d/`, puis recharger (`nginx -t && nginx -s reload` dans le conteneur, ou via l'UI).
 4. Vérifier : `curl -I https://prediction.<domaine>/api/health`
+
+## Fail2ban
+Voir `../fail2ban/` : deux filtres (`prediction-auth`, `prediction-scan`) et un jail.
+`sudo fail2ban-regex /opt/nginx-ui/nginx/logs/prediction-access.log prediction-auth` permet de tester les filtres sur les logs réels.
