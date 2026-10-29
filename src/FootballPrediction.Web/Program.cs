@@ -10,7 +10,17 @@ using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllersWithViews();
+// TempData côté serveur (session) : le CSV du résultat Batch est trop gros pour un cookie
+// (limite navigateur ~4 Ko, et nginx rejetait l'en-tête Set-Cookie : 502).
+builder.Services.AddDistributedMemoryCache();
+builder.Services.AddSession(options =>
+{
+    options.Cookie.Name = ".Prediction.Session";
+    options.Cookie.HttpOnly = true;
+    options.Cookie.IsEssential = true;
+    options.IdleTimeout = TimeSpan.FromMinutes(30);
+});
+builder.Services.AddControllersWithViews().AddSessionStateTempDataProvider();
 builder.Services.AddControllers();
 
 // ── Identity + SQLite ──
@@ -136,6 +146,7 @@ app.UseForwardedHeaders();
 app.UseStaticFiles();
 app.UseRouting();
 
+app.UseSession();
 app.UseAuthentication();
 app.UseAuthorization();
 
