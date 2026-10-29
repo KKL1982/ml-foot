@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Guide de déploiement sur le VPS</title>
+<style>
+:root{--bg:#ffffff;--surface:#f6f8fa;--tx:#1f2328;--tx2:#59636e;--brd:#d1d9e0;--accent:#0b6bcb;--code-bg:#f3f4f6;--info-bg:#e8f1fb;--info-brd:#0b6bcb;--warn-bg:#fff4e0;--warn-brd:#c77700}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1419;--surface:#151b23;--tx:#e6edf3;--tx2:#9aa7b4;--brd:#2b3642;--accent:#5cb0ff;--code-bg:#0b0f14;--info-bg:#102338;--info-brd:#5cb0ff;--warn-bg:#33260f;--warn-brd:#f0a73a}}
+:root[data-theme="dark"]{--bg:#0f1419;--surface:#151b23;--tx:#e6edf3;--tx2:#9aa7b4;--brd:#2b3642;--accent:#5cb0ff;--code-bg:#0b0f14;--info-bg:#102338;--info-brd:#5cb0ff;--warn-bg:#33260f;--warn-brd:#f0a73a}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:860px;margin:0 auto;padding:24px 16px 80px}
+header.top{padding:24px 0 16px;border-bottom:1px solid var(--brd);margin-bottom:24px}
+h1{font-size:clamp(1.6rem,5vw,2.2rem);line-height:1.2;margin:0 0 6px}
+.sub{color:var(--tx2);margin:0 0 14px}
+.meta{display:flex;flex-wrap:wrap;gap:8px 20px;font-size:.9rem;color:var(--tx2);margin:0;padding:0;list-style:none}
+.meta strong{color:var(--tx)}
+nav.toc{background:var(--surface);border:1px solid var(--brd);border-radius:10px;padding:14px 18px;margin-bottom:32px}
+nav.toc h2{font-size:.85rem;text-transform:uppercase;letter-spacing:.06em;color:var(--tx2);margin:0 0 8px;border:0;padding:0}
+nav.toc ol{margin:0;padding-left:1.2rem;columns:2 260px;column-gap:28px}
+nav.toc a{color:var(--accent);text-decoration:none}
+nav.toc a:hover{text-decoration:underline}
+section{margin-bottom:40px}
+h2{font-size:1.4rem;margin:0 0 12px;padding-top:8px;border-top:1px solid var(--brd);scroll-margin-top:12px}
+h3{font-size:1.05rem;margin:22px 0 8px}
+p,ul,ol{margin:0 0 14px}
+li{margin:4px 0}
+code{font-family:ui-monospace,SFMono-Regular,Consolas,"Liberation Mono",monospace}
+figure.code{margin:0 0 16px}
+figcaption{font-size:.82rem;color:var(--tx2);margin-bottom:4px}
+.codebox{position:relative;background:var(--code-bg);border:1px solid var(--brd);border-radius:8px}
+pre{margin:0;padding:12px 14px;overflow-x:auto;font-size:.85rem;line-height:1.5}
+.copy{position:absolute;top:6px;right:6px;font:inherit;font-size:.75rem;padding:4px 10px;min-height:28px;border:1px solid var(--brd);border-radius:6px;background:var(--surface);color:var(--tx);cursor:pointer}
+.copy:hover{border-color:var(--accent)}
+.note{border-left:4px solid;border-radius:6px;padding:10px 14px;margin:0 0 16px;font-size:.95rem}
+.note strong{display:block;font-size:.78rem;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px}
+.note.info{background:var(--info-bg);border-color:var(--info-brd)}
+.note.warn{background:var(--warn-bg);border-color:var(--warn-brd)}
+.tablewrap{overflow-x:auto;margin:0 0 16px;border:1px solid var(--brd);border-radius:8px}
+table{border-collapse:collapse;width:100%;font-size:.9rem}
+th,td{text-align:left;padding:8px 12px;vertical-align:top;border-bottom:1px solid var(--brd)}
+th{background:var(--surface);font-weight:600;white-space:nowrap}
+tr:last-child td{border-bottom:0}
+@media (max-width:640px){
+  .tablewrap{border:0;overflow:visible}
+  table,thead,tbody{display:block}
+  thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+  tr{display:block;border:1px solid var(--brd);border-radius:8px;margin-bottom:10px;padding:6px 0;background:var(--surface)}
+  td{display:block;border:0;padding:4px 12px}
+  td::before{content:attr(data-label);display:block;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:var(--tx2)}
+}
+footer{color:var(--tx2);font-size:.85rem;border-top:1px solid var(--brd);padding-top:14px}
+@media print{.copy,nav.toc{display:none}body{font-size:12px}pre{white-space:pre-wrap}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+<h1>Guide de déploiement sur le VPS</h1>
+<p class="sub">Football Prediction derrière nginx-ui : Docker, BIND, Let's Encrypt, fail2ban</p>
+<ul class="meta"><li><strong>Domaine :</strong> prediction.dbdesignandcodereview.com</li><li><strong>Dépôt :</strong> github.com/KKL1982/ml-foot (branche main)</li><li><strong>Public :</strong> Administrateur du VPS</li></ul>
+</header>
+<nav class="toc" aria-label="Sommaire"><h2>Sommaire</h2><ol><li><a href="#vue">Vue d'ensemble</a></li><li><a href="#prerequis">Prérequis</a></li><li><a href="#dns">DNS (BIND)</a></li><li><a href="#certificat">Certificat Let's Encrypt</a></li><li><a href="#deploy">Déploiement de l'application</a></li><li><a href="#config">Configuration de l'application et des clés</a></li><li><a href="#nginx">Configuration nginx-ui</a></li><li><a href="#fail2ban">fail2ban</a></li><li><a href="#securite">Sécurité de l'application</a></li><li><a href="#maj">Mise à jour courante</a></li><li><a href="#depannage">Dépannage</a></li><li><a href="#retour">Retour arrière</a></li><li><a href="#annexes">Annexes</a></li></ol></nav>
+<main>
+<section id="vue"><h2>1. Vue d'ensemble</h2><p>L'application ASP.NET (port 7575) tourne dans un conteneur Docker. Elle n'est pas exposée directement : nginx-ui, qui gère HTTPS, la limitation de débit et le certificat, relaie les requêtes vers le conteneur sur un réseau Docker partagé.</p>
+<figure class="code"><figcaption>Flux</figcaption><div class="codebox"><button type="button" class="copy" aria-label="Copier le bloc">Copier</button><pre><code>Navigateur  --HTTPS 443--&gt;  nginx-ui  --HTTP 7575--&gt;  football-prediction (conteneur)
+                               |
+                               +-- certificat Let's Encrypt (certbot, mode standalone)
+                               +-- journaux lus par fail2ban (jail sur la chaîne DOCKER-USER)
+DNS : BIND sur le VPS (zone dbdesignandcodereview.com)</code></pre></div></figure>
+<div class="tablewrap"><table><thead><tr><th>Composant</th><th>Rôle</th><th>Emplacement</th></tr></thead><tbody><tr><td data-label="Composant">Docker Compose</td><td data-label="Rôle">Construit et lance le conteneur football-prediction</td><td data-label="Emplacement">~/ml-foot (docker-compose.yml, Dockerfile)</td></tr><tr><td data-label="Composant">nginx-ui</td><td data-label="Rôle">Reverse proxy HTTPS, limitation de débit</td><td data-label="Emplacement">Conteneur nginx-ui ; /opt/nginx-ui/nginx/conf.d</td></tr><tr><td data-label="Composant">BIND</td><td data-label="Rôle">Serveur DNS de la zone</td><td data-label="Emplacement">/var/lib/bind/</td></tr><tr><td data-label="Composant">certbot</td><td data-label="Rôle">Certificat Let's Encrypt unique (20 noms)</td><td data-label="Emplacement">/etc/letsencrypt/live/dbdesignandcodereview.com/</td></tr><tr><td data-label="Composant">fail2ban</td><td data-label="Rôle">Bannit les IP abusives (connexion, scans)</td><td data-label="Emplacement">/etc/fail2ban/filter.d et jail.d</td></tr><tr><td data-label="Composant">deploy.sh</td><td data-label="Rôle">Automatise l'application, nginx et fail2ban</td><td data-label="Emplacement">~/ml-foot/deploy/deploy.sh</td></tr></tbody></table></div></section>
+<section id="prerequis"><h2>2. Prérequis</h2><ul><li>Accès SSH au VPS avec sudo.</li><li>Docker Compose version 2.24 ou plus (le script utilise « ports: !reset [] »). Vérifier : docker compose version.</li><li>Le conteneur nginx-ui existe et publie les ports 80 et 443.</li><li>Le dépôt est cloné dans ~/ml-foot.</li><li>Un fichier appsettings.Production.json existe dans ~/ml-foot (voir la section 6) : il est monté dans le conteneur et n'est pas versionné.</li></ul></section>
+<section id="dns"><h2>3. DNS (BIND)</h2><p>Chaque sous-domaine a un enregistrement A dans la zone BIND du VPS.</p>
+<ol><li>Éditer le fichier de zone dans /var/lib/bind/ (nom du fichier : voir « zone » dans la configuration de BIND).</li><li>Ajouter une ligne identique à celle de kraken, avec l'IP du VPS.</li><li>Incrémenter le serial du SOA (format AAAAMMJJNN), sinon les serveurs secondaires ignorent le changement.</li><li>Vérifier la zone, puis la recharger.</li></ol>
+<figure class="code"><figcaption>Ajout et rechargement</figcaption><div class="codebox"><button type="button" class="copy" aria-label="Copier le bloc">Copier</button><pre><code>sudo nano /var/lib/bind/&lt;fichier_de_zone&gt;
+# ajouter :
+prediction  IN  A  &lt;IP_DU_VPS&gt;
+
+sudo named-checkzone dbdesignandcodereview.com /var/lib/bind/&lt;fichier_de_zone&gt;
+sudo rndc reload dbdesignandcodereview.com</code></pre></div></figure>
+<figure class="code"><figcaption>Vérification (les deux doivent afficher l'IP du VPS)</figcaption><div class="codebox"><button type="button" class="copy" aria-label="Copier le bloc">Copier</button><pre><code>dig +short prediction.dbdesignandcodereview.com @127.0.0.1
+dig +short prediction.dbdesignandcodereview.com @8.8.8.8</code></pre></div></figure>
+<div class="note info"><strong>À savoir</strong> Si un fichier .jnl existe à côté de la zone, la zone accepte les mises à jour dynamiques : exécuter « sudo rndc freeze dbdesignandcodereview.com » avant l'édition et « sudo rndc thaw dbdesignandcodereview.com » après.</div>
+<div class="note warn"><strong>Attention</strong> Le journal « zone serial unchanged » signifie que le serial n'a pas été incrémenté.</div></section>
+<section id="certificat"><h2>4. Certificat Let's Encrypt</h2><p>Un seul certificat (nom : dbdesignandcodereview.com, clé RSA) couvre tous les sous-domaines. Il est émis en mode standalone : certbot ouvre lui-même le port 80, que nginx-ui occupe. Il faut donc arrêter nginx-ui pendant la validation (environ 30 secondes d'indisponibilité de tous les sites).</p>
+<div class="note warn"><strong>Attention</strong> Les hooks enregistrés dans /etc/letsencrypt/renewal/*.conf ne s'appliquent qu'à « certbot renew ». Avec « certbot certonly », il faut redonner --pre-hook et --post-hook, sinon : « Could not bind TCP port 80 ».</div>
+<p>Avant d'ajouter un sous-domaine, vérifier que tous les noms du certificat répondent encore sur ce VPS (un seul nom en échec fait échouer l'ensemble), puis sauvegarder.</p>
+<figure class="code"><figcaption>Contrôle et sauvegarde</figcaption><div class="codebox"><button type="button" class="copy" aria-label="Copier le bloc">Copier</button><pre><code>sudo certbot certificates
+sudo cp -a /etc/letsencrypt /root/letsencrypt-backup-$(date +%F)</code></pre></div></figure>
+<figure class="code"><figcaption>Extension du certificat (liste complète des noms + le nouveau)</figcaption><div class="codebox"><button type="button" class="copy" aria-label="Copier le bloc">Copier</button><pre><code>sudo certbot certonly --standalone --cert-name dbdesignandcodereview.com --expand \
+  --pre-hook "docker stop nginx-ui" --post-hook "docker start nginx-ui" \
+  -d dbdesignandcodereview.com -d www.dbdesignandcodereview.com \
+  -d api.dbdesignandcodereview.com -d argocd.dbdesignandcodereview.com \
+  -d bitcoinbot.dbdesignandcodereview.com -d btcpay.dbdesignandcodereview.com \
+  -d crypto-trader.dbdesignandcodereview.com -d educertpro.dbdesignandcodereview.com \
+  -d gitlab.dbdesignandcodereview.com -d kraken.dbdesignandcodereview.com \
+  -d livesales.dbdesignandcodereview.com -d mail.dbdesignandcodereview.com \
+  -d nginx.dbdesignandcodereview.com -d odoo.dbdesignandcodereview.com \
+  -d sales.dbdesignandcodereview.com -d status.dbdesignandcodereview.com \
+  -d studio.dbdesignandcodereview.com -d supabase.dbdesignandcodereview.com \
+  -d transit.dbdesignandcodereview.com -d prediction.dbdesignandcodereview.com</code></pre></div></figure>
+<p>Réponses aux questions de certbot :</p>
+<ul><li>« Update key type to ECDSA ? » : répondre K (Keep), pour conserver RSA.</li><li>« Did you intend to make this change ? » : répondre U (Update).</li></ul>
+<figure class="code"><figcaption>Vérification (nginx-ui doit être « Up »)</figcaption><div class="codebox"><button type="button" class="copy" aria-label="Copier le bloc">Copier</button><pre><code>sudo certbot certificates | grep -E "Key Type|Domains|Expiry"
+docker ps --format '{{.Names}} {{.Status}}' | grep nginx-ui</code></pre></div></figure>
+<div class="note info"><strong>À savoir</strong> Le renouvellement automatique (certbot renew) arrête puis relance nginx-ui grâce aux hooks du fichier de renouvellement.</div></section>
+<section id="deploy"><h2>5. Déploiement de l'application</h2><figure class="code"><figcaption>Commande standard</figcaption><div class="codebox"><button type="button" class="copy" aria-label="Copier le bloc">Copier</button><pre><code>cd ~/ml-foot
+git pull
+sudo ./deploy/deploy.sh --domain prediction.dbdesignandcodereview.com</code></pre></div></figure>
+<div class="note warn"><strong>Attention</strong> Le nom du domaine se donne après --domain. Sans cette option, le script s'arrête (« --domain est obligatoire »). Toujours passer par le script : il fournit la version affichée dans le badge ; un « docker compose up --build » manuel affiche « dev ».</div>
+<h3>Ce que fait le script</h3>
+<ol><li>Application : détecte le réseau Docker de nginx-ui, génère docker-compose.override.yml (rattachement au réseau, port 7575 non publié), exporte la version (commit court + date), puis lance docker compose up -d --build.</li><li>nginx-ui : installe prediction.conf avec le bon domaine et le bon certificat, sauvegarde l'ancienne version dans /var/backups/prediction-deploy/, exécute nginx -t, recharge nginx, puis interroge /api/health. Si nginx -t échoue, l'ancienne configuration est restaurée.</li><li>fail2ban : installe le paquet s'il manque, copie les filtres et le jail, crée le fichier de journal, recharge fail2ban et affiche l'état des deux jails.</li></ol>
+<h3>Options</h3>
+<div class="tablewrap"><table><thead><tr><th>Option</th><th>Rôle</th><th>Valeur par défaut</th></tr></thead><tbody><tr><td data-label="Option">--domain</td><td data-label="Rôle">Nom de domaine public (obligatoire)</td><td data-label="Valeur par défaut">—</td></tr><tr><td data-label="Option">--cert-domain</td><td data-label="Rôle">Dossier Let's Encrypt à utiliser</td><td data-label="Valeur par défaut">Domaine parent de --domain</td></tr><tr><td data-label="Option">--nginx-container</td><td data-label="Rôle">Nom du conteneur nginx-ui</td><td data-label="Valeur par défaut">nginx-ui</td></tr><tr><td data-label="Option">--conf-dir</td><td data-label="Rôle">Dossier conf.d de nginx-ui (hôte)</td><td data-label="Valeur par défaut">/opt/nginx-ui/nginx/conf.d</td></tr><tr><td data-label="Option">--log-dir</td><td data-label="Rôle">Dossier des journaux nginx (hôte)</td><td data-label="Valeur par défaut">/opt/nginx-ui/nginx/logs</td></tr><tr><td data-label="Option">--ignoreip</td><td data-label="Rôle">IP jamais bannies par fail2ban</td><td data-label="Valeur par défaut">non défini</td></tr><tr><td data-label="Option">--skip-app, --skip-nginx, --skip-fail2ban</td><td data-label="Rôle">Ignorer une partie du déploiement</td><td data-label="Valeur par défaut">—</td></tr></tbody></table></div>
+<h3>Résultat attendu</h3>
+<ul><li>Le test de santé affiche « HTTP 302 » : c'est normal, l'API exige une connexion et redirige vers /Account/Login.</li><li>Les deux jails (prediction-auth et prediction-scan) apparaissent avec « Currently banned: 0 ».</li><li>L'avertissement nginx sur « listen ... http2 » dans livesales.conf concerne un autre site et est sans effet ici.</li></ul>
+<p>Ouvrir ensuite https://prediction.dbdesignandcodereview.com : la page de connexion doit s'afficher avec le cadenas valide. Le badge de version (en-tête et bas du menu latéral) doit afficher le hash du dernier commit.</p></section>
+<section id="config"><h2>6. Configuration de l'application et des clés</h2><p>Les clés d'API se trouvent dans ~/ml-foot/appsettings.Production.json, monté en lecture seule dans le conteneur. Ce fichier n'est jamais versionné dans git.</p>
+<figure class="code"><figcaption>Exemple (à adapter, conserver les autres sections existantes)</figcaption><div class="codebox"><button type="button" class="copy" aria-label="Copier le bloc">Copier</button><pre><code>{
+  "OddsApi": { "ApiKey": "VOTRE_CLE_ODDS", "CacheMinutes": 60 },
+  "FootballData": { "ApiKey": "VOTRE_CLE_FOOTBALL_DATA" }
+}</code></pre></div></figure>
+<figure class="code"><figcaption>Changer une clé</figcaption><div class="codebox"><button type="button" class="copy" aria-label="Copier le bloc">Copier</button><pre><code>cd ~/ml-foot
+nano appsettings.Production.json
+python3 -m json.tool appsettings.Production.json &gt; /dev/null &amp;&amp; echo OK
+docker compose restart web</code></pre></div></figure>
+<ul><li>Un simple redémarrage suffit : le fichier est monté, pas copié dans l'image.</li><li>Un JSON invalide fait échouer le démarrage : contrôler avec docker logs --tail 30 football-prediction.</li><li>Une clé qui a été affichée ou collée quelque part doit être régénérée chez le fournisseur et l'ancienne désactivée.</li><li>Les journaux HTTP des clients d'API sont au niveau Warning : les URL contenant la clé ne sont plus écrites.</li></ul></section>
+<section id="nginx"><h2>7. Configuration nginx-ui</h2><p>Le fichier source est deploy/nginx-ui/prediction.conf ; le script l'installe dans /opt/nginx-ui/nginx/conf.d/prediction.conf.</p>
+<div class="tablewrap"><table><thead><tr><th>Réglage</th><th>Valeur</th><th>Raison</th></tr></thead><tbody><tr><td data-label="Réglage">Zone « prediction »</td><td data-label="Valeur">300 requêtes/minute, burst 60</td><td data-label="Raison">Limitation générale du site</td></tr><tr><td data-label="Réglage">Zone « predictionauth »</td><td data-label="Valeur">10 requêtes/minute, burst 5, sur /Account/</td><td data-label="Raison">Frein au brute-force de la connexion</td></tr><tr><td data-label="Réglage">limit_req_status</td><td data-label="Valeur">429</td><td data-label="Raison">Rend les dépassements visibles pour fail2ban</td></tr><tr><td data-label="Réglage">client_max_body_size</td><td data-label="Valeur">20m</td><td data-label="Raison">Envoi des CSV de la page Batch</td></tr><tr><td data-label="Réglage">proxy_read_timeout</td><td data-label="Valeur">180 s</td><td data-label="Raison">La récupération en ligne peut être longue</td></tr><tr><td data-label="Réglage">proxy_buffer_size / buffers</td><td data-label="Valeur">16k / 8 x 16k / busy 32k</td><td data-label="Raison">En-têtes de réponse volumineux (cookies)</td></tr><tr><td data-label="Réglage">Certificat</td><td data-label="Valeur">/etc/letsencrypt/live/dbdesignandcodereview.com/</td><td data-label="Raison">Certificat unique à 20 noms</td></tr></tbody></table></div>
+<div class="note warn"><strong>Attention</strong> nginx-ui charge TOUS les fichiers de conf.d, pas seulement ceux en .conf. Ne jamais laisser une sauvegarde (.bak) dans ce dossier : elle redéclare les zones limit_req_zone et nginx -t échoue. Le script sauvegarde dans /var/backups/prediction-deploy/.</div>
+<figure class="code"><figcaption>Tester, recharger, lire les erreurs</figcaption><div class="codebox"><button type="button" class="copy" aria-label="Copier le bloc">Copier</button><pre><code>docker exec nginx-ui nginx -t
+docker exec nginx-ui nginx -s reload
+sudo tail -n 20 /opt/nginx-ui/nginx/logs/prediction-error.log</code></pre></div></figure></section>
+<section id="fail2ban"><h2>8. fail2ban</h2><div class="tablewrap"><table><thead><tr><th>Jail</th><th>Détecte</th><th>Seuil</th><th>Durée du ban</th></tr></thead><tbody><tr><td data-label="Jail">prediction-auth</td><td data-label="Détecte">POST /Account/Login répondu en 200 (échec : le formulaire est réaffiché ; un succès renvoie 302)</td><td data-label="Seuil">5 échecs en 10 min</td><td data-label="Durée du ban">1 h</td></tr><tr><td data-label="Jail">prediction-scan</td><td data-label="Détecte">Réponses 400, 403, 404 et 429 (les fichiers statiques manquants sont ignorés)</td><td data-label="Seuil">20 en 10 min</td><td data-label="Durée du ban">6 h</td></tr></tbody></table></div>
+<ul><li>Les bans visent la chaîne DOCKER-USER : la chaîne INPUT par défaut ne protège pas les ports publiés par Docker.</li><li>ignoreip n'est volontairement pas défini (connexions depuis plusieurs lieux et un mobile, IP variables). Le jail ne couvre que les ports web : le SSH reste ouvert pour débloquer.</li><li>Le fichier de journal prediction-access.log doit exister avant le démarrage des jails : le script le crée.</li></ul>
+<figure class="code"><figcaption>Commandes utiles</figcaption><div class="codebox"><button type="button" class="copy" aria-label="Copier le bloc">Copier</button><pre><code>sudo fail2ban-client status prediction-auth
+sudo fail2ban-client status prediction-scan
+sudo fail2ban-client set prediction-auth unbanip &lt;IP&gt;
+sudo fail2ban-client unban --all
+sudo fail2ban-regex /opt/nginx-ui/nginx/logs/prediction-access.log prediction-auth</code></pre></div></figure></section>
+<section id="securite"><h2>9. Sécurité de l'application</h2><ul><li>En-têtes de proxy : l'application n'accepte X-Forwarded-For et X-Forwarded-Proto que depuis les plages privées (172.16.0.0/12, 10.0.0.0/8, 192.168.0.0/16). Pour restreindre au seul réseau de nginx-ui : variable ForwardedHeaders__KnownNetworks (par exemple 172.18.0.0/16) dans docker-compose.yml.</li><li>Cookie d'authentification : drapeau Secure en production (la connexion se fait donc par https://, pas par http://IP:7575).</li><li>Clés de chiffrement des cookies (DataProtection) : stockées dans data/keys, sur le volume ./data. Un redéploiement ne déconnecte plus les utilisateurs.</li><li>Le port 7575 n'est plus publié sur l'hôte : seul nginx-ui y accède, par le réseau Docker.</li><li>Les mots de passe suivent la politique Identity (8 caractères minimum, majuscule, minuscule, chiffre) ; verrouillage de 15 minutes après 5 échecs.</li></ul></section>
+<section id="maj"><h2>10. Mise à jour courante</h2><figure class="code"><figcaption>Mise à jour (fail2ban déjà en place)</figcaption><div class="codebox"><button type="button" class="copy" aria-label="Copier le bloc">Copier</button><pre><code>cd ~/ml-foot
+git pull
+sudo ./deploy/deploy.sh --domain prediction.dbdesignandcodereview.com --skip-fail2ban</code></pre></div></figure>
+<ol><li>Vérifier que le conteneur est « Up » : docker ps --format '{{.Names}} {{.Status}}' | grep football.</li><li>Vérifier le badge de version : il doit correspondre à git log -1 --oneline. « dev » indique un build hors du script ; un suffixe « -dirty » indique des modifications locales non commitées sur le VPS.</li><li>Sur un téléphone, actualiser deux fois la première fois : le CSS est versionné par hash, mais l'ancienne page peut encore référencer l'ancien fichier.</li></ol></section>
+<section id="depannage"><h2>11. Dépannage</h2><div class="tablewrap"><table><thead><tr><th>Symptôme</th><th>Cause</th><th>Remède</th></tr></thead><tbody><tr><td data-label="Symptôme">« Option inconnue : --prediction... »</td><td data-label="Cause">Le mot --domain manque devant le nom</td><td data-label="Remède">sudo ./deploy/deploy.sh --domain prediction.dbdesignandcodereview.com</td></tr><tr><td data-label="Symptôme">certbot : « Could not bind TCP port 80 »</td><td data-label="Cause">nginx-ui occupe le port 80 et les hooks ne s'appliquent pas à certonly</td><td data-label="Remède">Ajouter --pre-hook "docker stop nginx-ui" --post-hook "docker start nginx-ui"</td></tr><tr><td data-label="Symptôme">nginx -t : « limit_req_zone "prediction" is already bound »</td><td data-label="Cause">Un fichier .bak traîne dans conf.d</td><td data-label="Remède">Supprimer le .bak ; le script sauvegarde maintenant hors de conf.d</td></tr><tr><td data-label="Symptôme">502 après « Récupérer et prédire » ; erreur « upstream sent too big header »</td><td data-label="Cause">Le CSV du résultat était stocké dans un cookie TempData trop gros</td><td data-label="Remède">Corrigé : TempData en session côté serveur (déployer la dernière version)</td></tr><tr><td data-label="Symptôme">405 sur /Batch/PredictFile</td><td data-label="Cause">Retour en GET vers une action POST après une reconnexion</td><td data-label="Remède">Corrigé : redirection vers la page Batch ; les clés DataProtection persistées évitent la déconnexion</td></tr><tr><td data-label="Symptôme">Déconnexion à chaque déploiement</td><td data-label="Cause">Clés de chiffrement non persistées</td><td data-label="Remède">Vérifier que ~/ml-foot/data/keys contient des fichiers key-*.xml</td></tr><tr><td data-label="Symptôme">Badge « dev » ou « -dirty »</td><td data-label="Cause">Build hors script ou modifications locales</td><td data-label="Remède">Relancer deploy.sh ; git status sur le VPS</td></tr><tr><td data-label="Symptôme">Pas de cotes dans les résultats</td><td data-label="Cause">Clé The Odds API invalide ou quota épuisé</td><td data-label="Remède">Voir docker logs --tail 40 football-prediction (erreurs 401/403)</td></tr><tr><td data-label="Symptôme">Page inaccessible après déploiement</td><td data-label="Cause">DNS non propagé ou conteneur hors réseau nginx-ui</td><td data-label="Remède">dig +short prediction.dbdesignandcodereview.com ; relancer deploy.sh (rattache le réseau)</td></tr><tr><td data-label="Symptôme">Mise en page mobile ancienne</td><td data-label="Cause">CSS en cache</td><td data-label="Remède">Actualiser deux fois ou vider les données du site</td></tr></tbody></table></div>
+<figure class="code"><figcaption>Journaux à consulter</figcaption><div class="codebox"><button type="button" class="copy" aria-label="Copier le bloc">Copier</button><pre><code>sudo tail -n 20 /opt/nginx-ui/nginx/logs/prediction-error.log
+sudo tail -n 20 /opt/nginx-ui/nginx/logs/prediction-access.log
+docker logs --tail 50 football-prediction
+sudo journalctl -u named -n 20
+sudo fail2ban-client status</code></pre></div></figure></section>
+<section id="retour"><h2>12. Retour arrière</h2><ol><li>Application : git log --oneline pour repérer le commit voulu, git checkout &lt;commit&gt;, puis relancer deploy.sh. Revenir ensuite sur main (git checkout main) avant le prochain git pull.</li><li>Configuration nginx : copier /var/backups/prediction-deploy/prediction.conf.bak vers /opt/nginx-ui/nginx/conf.d/prediction.conf, puis nginx -t et nginx -s reload.</li><li>Certificat : restaurer la sauvegarde /root/letsencrypt-backup-&lt;date&gt; (arrêter nginx-ui, remplacer /etc/letsencrypt, relancer nginx-ui).</li><li>Docker : le fichier docker-compose.override.yml est regénéré à chaque déploiement ; l'ancien est conservé en docker-compose.override.yml.bak.&lt;horodatage&gt;.</li></ol></section>
+<section id="annexes"><h2>13. Annexes</h2><h3>Fichiers du dossier deploy/</h3>
+<div class="tablewrap"><table><thead><tr><th>Fichier</th><th>Rôle</th></tr></thead><tbody><tr><td data-label="Fichier">deploy/deploy.sh</td><td data-label="Rôle">Script de déploiement (application, nginx-ui, fail2ban)</td></tr><tr><td data-label="Fichier">deploy/nginx-ui/prediction.conf</td><td data-label="Rôle">Configuration nginx du site</td></tr><tr><td data-label="Fichier">deploy/nginx-ui/README.md</td><td data-label="Rôle">Notes d'exposition via nginx-ui</td></tr><tr><td data-label="Fichier">deploy/fail2ban/filter-prediction-auth.conf</td><td data-label="Rôle">Filtre des échecs de connexion</td></tr><tr><td data-label="Fichier">deploy/fail2ban/filter-prediction-scan.conf</td><td data-label="Rôle">Filtre des scans et abus</td></tr><tr><td data-label="Fichier">deploy/fail2ban/jail-prediction.local</td><td data-label="Rôle">Définition des deux jails</td></tr></tbody></table></div>
+<h3>Chemins et variables importants</h3>
+<div class="tablewrap"><table><thead><tr><th>Élément</th><th>Valeur</th></tr></thead><tbody><tr><td data-label="Élément">Conteneur / service Compose</td><td data-label="Valeur">football-prediction / web</td></tr><tr><td data-label="Élément">Port interne</td><td data-label="Valeur">7575 (non publié sur l'hôte)</td></tr><tr><td data-label="Élément">Volumes</td><td data-label="Valeur">./models (lecture seule), ./data (lecture-écriture), ./appsettings.Production.json</td></tr><tr><td data-label="Élément">Base de données</td><td data-label="Valeur">data/app.db (SQLite) ; entraîneurs : data/coaches.json</td></tr><tr><td data-label="Élément">Variables de build</td><td data-label="Valeur">GIT_SHA, BUILD_DATE (fournies par deploy.sh)</td></tr><tr><td data-label="Élément">Variable facultative</td><td data-label="Valeur">ForwardedHeaders__KnownNetworks (plage du proxy de confiance)</td></tr><tr><td data-label="Élément">Sauvegardes</td><td data-label="Valeur">/var/backups/prediction-deploy/ et /root/letsencrypt-backup-&lt;date&gt;</td></tr></tbody></table></div></section>
+</main>
+<footer>Document généré à partir du dépôt ml-foot (dossier deploy/). Aucune clé ni mot de passe n'y figure.</footer>
+</div>
+<script>
+document.querySelectorAll('.copy').forEach(function(btn){
+  btn.addEventListener('click',function(){
+    var text=btn.parentElement.querySelector('code').textContent;
+    var done=function(){var o=btn.textContent;btn.textContent='Copié';setTimeout(function(){btn.textContent=o;},1500);};
+    if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(text).then(done,function(){});}
+    else{var ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');done();}catch(e){}document.body.removeChild(ta);}
+  });
+});
+</script>
+</body>
+</html>
