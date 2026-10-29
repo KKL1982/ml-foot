@@ -533,3 +533,42 @@ a { color: inherit; }
 @media (max-width: 480px) {
     .card-header { flex-wrap: wrap; gap: 8px; }
 }
+
+/* Champ mot de passe avec bouton afficher/masquer */
+.password-field { position: relative; }
+.password-field .form-control { padding-right: 48px; }
+.password-toggle {
+    position: absolute; top: 0; right: 0; bottom: 0; width: 44px;
+    display: flex; align-items: center; justify-content: center;
+    background: none; border: 0; color: var(--tx2); cursor: pointer;
+}
+.password-toggle[hidden] { display: none; }
+.password-toggle:hover, .password-toggle:focus-visible { color: var(--tx); }
+.password-toggle svg { width: 20px; height: 20px; }
+.password-toggle svg[hidden] { display: none; }
+
+/* Liste des CSV déjà créés (page Batch) */
+.file-list { width: 100%; font-size: 12px; border-collapse: collapse; }
+.file-list th { text-align: left; color: var(--tx2); padding: 6px 8px; }
+.file-list td { padding: 8px; vertical-align: middle; }
+.file-list .f-name { word-break: break-all; }
+.file-list .f-actions { text-align: right; white-space: nowrap; }
+.file-list .f-actions form { display: inline; }
+@media (max-width: 768px) {
+    .file-list, .file-list tbody { display: block; }
+    .file-list thead { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); }
+    .file-list tr {
+        display: grid; grid-template-columns: 1fr 1fr; column-gap: 12px; row-gap: 4px;
+        padding: 12px 0; border-top: 1px solid var(--brd);
+    }
+    .file-list td { display: block; padding: 0; }
+    .file-list .f-name { grid-column: 1 / -1; font-size: 13px; font-weight: 600; }
+    .file-list .f-date, .file-list .f-count { color: var(--tx2); }
+    .file-list .f-date::before, .file-list .f-count::before { content: attr(data-label) " : "; }
+    .file-list .f-actions {
+        grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; text-align: left; white-space: normal;
+    }
+    .file-list .f-actions form { display: block; flex: 1 1 140px; }
+    .file-list .f-actions .btn { width: 100%; min-height: 44px; justify-content: center; text-align: center; }
+    .file-list .f-actions > a.btn { flex: 1 1 140px; }
+}

@@ -80,17 +80,17 @@
 {
     <div class="card">
         <div class="card-header">&#128193; CSV déjà créés</div>
-        <table style="width:100%;font-size:12px;border-collapse:collapse">
-            <thead><tr style="text-align:left;color:var(--tx2)"><th>Fichier</th><th>Créé le</th><th>Matchs</th><th></th></tr></thead>
+        <table class="file-list">
+            <thead><tr><th>Fichier</th><th>Créé le</th><th>Matchs</th><th></th></tr></thead>
             <tbody>
             @foreach (var f in Model.Files)
             {
                 <tr>
-                    <td>@f.FileName</td>
-                    <td>@f.CreatedUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
-                    <td>@f.MatchCount</td>
-                    <td style="text-align:right;white-space:nowrap">
-                        <form asp-action="PredictFile" method="post" style="display:inline">
+                    <td class="f-name">@f.FileName</td>
+                    <td class="f-date" data-label="Créé le">@f.CreatedUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                    <td class="f-count" data-label="Matchs">@f.MatchCount</td>
+                    <td class="f-actions">
+                        <form asp-action="PredictFile" method="post">
                             <input type="hidden" name="fileName" value="@f.FileName" />
                             <button type="submit" class="btn btn-green btn-sm">Prédire à nouveau</button>
                         </form>
