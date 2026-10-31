@@ -6,8 +6,10 @@
     <RootNamespace>FootballPrediction.Application</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="ClosedXML" Version="0.105.1" />
     <PackageReference Include="CsvHelper" Version="33.0.1" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.2" />
+    <PackageReference Include="QuestPDF" Version="2026.9.1" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\FootballPrediction.Domain\FootballPrediction.Domain.csproj" />

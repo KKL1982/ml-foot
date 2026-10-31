@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using System.Text;
+using System.Text.Json;
 using Match = FootballPrediction.Domain.Entities.Match;
 
 namespace FootballPrediction.Web.Controllers;
@@ -16,6 +17,10 @@ namespace FootballPrediction.Web.Controllers;
 public class BatchController : Controller
 {
     private const int MaxPeriodDays = 31;
+    private const string ItemsKey = "BatchPredictionsJson";
+
+    private static readonly IBatchExporter XlsxExporter = new XlsxBatchExporter();
+    private static readonly IBatchExporter PdfExporter = new PdfBatchExporter();
 
     private readonly IPredictionService _predictionService;
     private readonly BatchPredictionService _batchPredictionService;
@@ -178,12 +183,33 @@ public class BatchController : Controller
     [HttpGet]
     public IActionResult Download()
     {
-        var csv = TempData["BatchPredictionsCsv"] as string;
+        // Peek : les données restent disponibles pour les autres exports (xlsx, pdf).
+        var csv = TempData.Peek("BatchPredictionsCsv") as string;
         if (string.IsNullOrEmpty(csv))
             return RedirectToAction("Index");
 
         var fileName = $"predictions_{DateTime.Now:yyyyMMdd_HHmmss}.csv";
         return File(Encoding.UTF8.GetBytes(csv), "text/csv", fileName);
+    }
+
+    [HttpGet]
+    public IActionResult ExportXlsx() => Export(XlsxExporter);
+
+    [HttpGet]
+    public IActionResult ExportPdf() => Export(PdfExporter);
+
+    private IActionResult Export(IBatchExporter exporter)
+    {
+        var json = TempData.Peek(ItemsKey) as string;
+        var items = string.IsNullOrEmpty(json)
+            ? null
+            : JsonSerializer.Deserialize<List<BatchPredictionItem>>(json);
+        if (items == null || items.Count == 0)
+            return RedirectToAction("Index");
+
+        var now = DateTime.Now;
+        var bytes = exporter.Export(items, now);
+        return File(bytes, exporter.ContentType, $"predictions_{now:yyyyMMdd_HHmmss}.{exporter.Extension}");
     }
 
     private async Task<IActionResult> PredictFromFileAsync(string fileName, IReadOnlyList<string> warnings)
@@ -234,6 +260,7 @@ public class BatchController : Controller
         }
 
         TempData["BatchPredictionsCsv"] = csv.ToString();
+        TempData[ItemsKey] = JsonSerializer.Serialize(items);
 
         _logger.LogInformation("Batch processed: {Total} matches, {Predictions} predictions",
             matches.Count, items.Count);

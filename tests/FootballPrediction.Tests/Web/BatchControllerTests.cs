@@ -136,6 +136,36 @@ public class BatchControllerTests
     }
 
     [Fact]
+    public void ExportXlsxAndPdf_WithData_ShouldReturnFiles_AndKeepDataBetweenCalls()
+    {
+        var controller = CreateController();
+        controller.TempData["BatchPredictionsJson"] = System.Text.Json.JsonSerializer.Serialize(new[]
+        {
+            new FootballPrediction.Application.DTOs.BatchPredictionItem
+            {
+                Date = new DateTime(2024, 1, 1), League = "PL", HomeTeam = "A", AwayTeam = "B",
+                PredictedResult = "1", Probability1 = 0.6, ProbabilityX = 0.2, Probability2 = 0.2, Confidence = 0.6, Bet = "HOME"
+            }
+        });
+
+        var xlsx = controller.ExportXlsx().Should().BeOfType<FileContentResult>().Subject;
+        xlsx.ContentType.Should().Contain("spreadsheetml");
+        xlsx.FileDownloadName.Should().EndWith(".xlsx");
+
+        var pdf = controller.ExportPdf().Should().BeOfType<FileContentResult>().Subject;
+        pdf.ContentType.Should().Be("application/pdf");
+        pdf.FileDownloadName.Should().EndWith(".pdf");
+    }
+
+    [Fact]
+    public void Export_NoData_ShouldRedirect()
+    {
+        var controller = CreateController();
+        controller.ExportXlsx().Should().BeOfType<RedirectToActionResult>();
+        controller.ExportPdf().Should().BeOfType<RedirectToActionResult>();
+    }
+
+    [Fact]
     public void Download_NoData_ShouldRedirect()
     {
         var controller = CreateController();
